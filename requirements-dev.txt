@@ -1,0 +1,8 @@
+# Dev-only tools (lint, format, pre-commit). Chains production deps via
+# `-r requirements.txt`. Same pin policy: exact `==`.
+
+-r requirements.txt
+
+# --- Lint / format / hooks ---
+pre-commit==4.0.1
+ruff==0.6.9

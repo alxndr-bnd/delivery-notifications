@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f7cff'/%3E%3Ctext x='50' y='72' font-size='62' font-family='Arial,sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3Ej%3C/text%3E%3C/svg%3E">
+<title data-i18n="meta_title">Javi — obavestite kupca kada paket stiže</title>
+<meta name="description" data-i18n="meta_desc" content="Javi obaveštava vaše kupce kada isporuka kreće i kada stiže. Manje neuspešnih isporuka, zadovoljniji kupci.">
+<style>
+  :root{
+    --bg:#0f1320; --card:#171c2e; --ink:#f4f6fb; --muted:#a9b2c9;
+    --brand:#4f7cff; --brand-2:#7a5cff; --ok:#2ecc8f; --line:#252c44;
+    --radius:16px; --max:960px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 80% -10%, #1b2240 0, transparent 60%), var(--bg);
+    background-color:var(--bg);
+    color:var(--ink); line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+  header{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+  .logo{font-weight:800;font-size:22px;letter-spacing:.3px}
+  .logo span{background:linear-gradient(90deg,var(--brand),var(--brand-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .langs{display:flex;gap:6px}
+  .langs button{
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:6px 11px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s
+  }
+  .langs button:hover{color:var(--ink);border-color:var(--brand)}
+  .langs button.active{background:var(--brand);border-color:var(--brand);color:#fff}
+
+  .hero{padding:46px 0 28px;text-align:center}
+  .hero h1{font-size:clamp(28px,5vw,46px);line-height:1.12;margin:0 0 16px;font-weight:800}
+  .hero h1 .hl{background:linear-gradient(90deg,var(--brand),var(--brand-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p.lead{font-size:clamp(16px,2.4vw,20px);color:var(--muted);max-width:680px;margin:0 auto 26px}
+  .cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{
+    display:inline-block;border:0;border-radius:12px;padding:14px 24px;font-size:16px;font-weight:700;
+    cursor:pointer;text-decoration:none;transition:.15s;
+  }
+  .btn-primary{background:linear-gradient(90deg,var(--brand),var(--brand-2));color:#fff}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(79,124,255,.35)}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+
+  .question{
+    margin:34px auto;max-width:760px;text-align:center;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--radius);padding:26px 24px
+  }
+  .question .q{font-size:clamp(18px,2.6vw,24px);font-weight:700;margin:0}
+  .question .q em{color:var(--brand);font-style:normal}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:30px 0}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+  .feat .ic{font-size:26px;margin-bottom:10px}
+  .feat h3{margin:0 0 6px;font-size:17px}
+  .feat p{margin:0;color:var(--muted);font-size:14.5px}
+
+  .form-section{margin:36px 0 20px}
+  .card-form{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:28px 24px;max-width:560px;margin:0 auto
+  }
+  .card-form h2{margin:0 0 6px;font-size:22px;text-align:center}
+  .card-form .sub{margin:0 0 20px;color:var(--muted);text-align:center;font-size:14.5px}
+  .field{margin-bottom:14px}
+  label{display:block;font-size:13.5px;color:var(--muted);margin-bottom:6px;font-weight:600}
+  input,select,textarea{
+    width:100%;background:#0e1322;border:1px solid var(--line);color:var(--ink);
+    border-radius:10px;padding:12px 13px;font-size:15px;font-family:inherit
+  }
+  input:focus,select,textarea:focus{outline:none;border-color:var(--brand)}
+  textarea{resize:vertical;min-height:70px}
+  .form-note{font-size:12px;color:var(--muted);margin-top:10px;text-align:center}
+  .ok-msg{display:none;text-align:center;padding:24px}
+  .ok-msg .big{font-size:40px;margin-bottom:8px}
+  .ok-msg h2{color:var(--ok)}
+
+  footer{border-top:1px solid var(--line);margin-top:40px;padding:24px 0 40px;color:var(--muted);font-size:13px;text-align:center}
+  .req{color:var(--brand)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">javi<span>.</span></div>
+    <nav class="langs" id="langs">
+      <button data-lang="sr">SR</button>
+      <button data-lang="en">EN</button>
+      <button data-lang="ru">RU</button>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1 data-i18n="hero_h1">Obavestite kupca <span class="hl">kada paket krene — i kada stiže</span></h1>
+    <p class="lead" data-i18n="hero_lead">Manje neuspešnih isporuka. Zadovoljniji kupci. Više ponovljenih porudžbina.</p>
+    <div class="cta-row">
+      <a href="#prijava" class="btn btn-primary" data-i18n="hero_cta">Želim da probam</a>
+      <a href="#kako" class="btn btn-ghost" data-i18n="hero_cta2">Kako radi</a>
+    </div>
+  </section>
+
+  <section class="question">
+    <p class="q" data-i18n="offer_q">Da li biste želeli da <em>obaveštavate primaoca</em> o započetoj isporuci i vremenu dolaska?</p>
+  </section>
+
+  <section class="grid" id="kako">
+    <div class="feat">
+      <div class="ic">📦</div>
+      <h3 data-i18n="f1_h">Kupac zna da paket kreće</h3>
+      <p data-i18n="f1_p">Automatska poruka preko Viber-a ili SMS-a čim pošaljete porudžbinu.</p>
+    </div>
+    <div class="feat">
+      <div class="ic">⏱️</div>
+      <h3 data-i18n="f2_h">I kada otprilike stiže</h3>
+      <p data-i18n="f2_p">Okvirno vreme dolaska — kupac je kod kuće, isporuka uspeva iz prvog pokušaja.</p>
+    </div>
+    <div class="feat">
+      <div class="ic">🔗</div>
+      <h3 data-i18n="f3_h">Praćenje na jednom linku</h3>
+      <p data-i18n="f3_p">Bez instaliranja aplikacije — kupac otvori status u pregledaču.</p>
+    </div>
+  </section>
+
+  <section class="form-section" id="prijava">
+    <div class="card-form">
+      <div id="formBox">
+        <h2 data-i18n="form_h">Ostavite kontakt</h2>
+        <p class="sub" data-i18n="form_sub">Javljamo vam se i pokazujemo kako radi. Bez obaveza.</p>
+        <form id="leadForm" action="https://formspree.io/f/mgoqjnny" method="POST">
+          <div class="field">
+            <label data-i18n="lbl_shop">Naziv prodavnice <span class="req">*</span></label>
+            <input type="text" name="shop" required>
+          </div>
+          <div class="field">
+            <label data-i18n="lbl_contact">Email ili telefon / Viber <span class="req">*</span></label>
+            <input type="text" name="contact" required>
+          </div>
+          <div class="field">
+            <label data-i18n="lbl_volume">Porudžbina mesečno (otprilike)</label>
+            <select name="volume">
+              <option value="" data-i18n="opt_choose">— izaberite —</option>
+              <option value="1-50">1–50</option>
+              <option value="50-200">50–200</option>
+              <option value="200-1000">200–1000</option>
+              <option value="1000+">1000+</option>
+            </select>
+          </div>
+          <div class="field">
+            <label data-i18n="lbl_msg">Poruka (opciono)</label>
+            <textarea name="message"></textarea>
+          </div>
+          <input type="hidden" name="lang" id="f_lang" value="sr">
+          <input type="hidden" name="utm_source" id="f_utm_source" value="">
+          <input type="hidden" name="utm_medium" id="f_utm_medium" value="">
+          <input type="hidden" name="utm_campaign" id="f_utm_campaign" value="">
+          <input type="hidden" name="_subject" value="Javi — nova prijava (Stage 0)">
+          <button type="submit" class="btn btn-primary" style="width:100%" data-i18n="form_btn">Pošalji prijavu</button>
+          <p class="form-note" data-i18n="form_note">Kontakt koristimo samo da vam se javimo povodom Javi.</p>
+        </form>
+      </div>
+      <div class="ok-msg" id="okMsg">
+        <div class="big">✅</div>
+        <h2 data-i18n="ok_h">Hvala!</h2>
+        <p data-i18n="ok_p">Primili smo vašu prijavu i javljamo vam se uskoro.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2026 Javi · javi.serbito.rs · <span data-i18n="foot">Obaveštenja o isporuci za prodavnice u Srbiji</span></p>
+  </footer>
+
+</div>
+
+<script>
+const I18N = {
+  sr:{
+    meta_title:"Javi — obavestite kupca kada paket stiže",
+    meta_desc:"Javi obaveštava vaše kupce kada isporuka kreće i kada stiže. Manje neuspešnih isporuka, zadovoljniji kupci.",
+    hero_h1:'Obavestite kupca <span class="hl">kada paket krene — i kada stiže</span>',
+    hero_lead:"Manje neuspešnih isporuka. Zadovoljniji kupci. Više ponovljenih porudžbina.",
+    hero_cta:"Želim da probam", hero_cta2:"Kako radi",
+    offer_q:'Da li biste želeli da <em>obaveštavate primaoca</em> o započetoj isporuci i vremenu dolaska?',
+    f1_h:"Kupac zna da paket kreće", f1_p:"Automatska poruka preko Viber-a ili SMS-a čim pošaljete porudžbinu.",
+    f2_h:"I kada otprilike stiže", f2_p:"Okvirno vreme dolaska — kupac je kod kuće, isporuka uspeva iz prvog pokušaja.",
+    f3_h:"Praćenje na jednom linku", f3_p:"Bez instaliranja aplikacije — kupac otvori status u pregledaču.",
+    form_h:"Ostavite kontakt", form_sub:"Javljamo vam se i pokazujemo kako radi. Bez obaveza.",
+    lbl_shop:'Naziv prodavnice <span class="req">*</span>',
+    lbl_contact:'Email ili telefon / Viber <span class="req">*</span>',
+    lbl_volume:"Porudžbina mesečno (otprilike)", opt_choose:"— izaberite —",
+    lbl_msg:"Poruka (opciono)", form_btn:"Pošalji prijavu",
+    form_note:"Kontakt koristimo samo da vam se javimo povodom Javi.",
+    ok_h:"Hvala!", ok_p:"Primili smo vašu prijavu i javljamo vam se uskoro.",
+    foot:"Obaveštenja o isporuci za prodavnice u Srbiji"
+  },
+  en:{
+    meta_title:"Javi — tell your customer when the parcel is on the way",
+    meta_desc:"Javi notifies your customers when delivery starts and when it arrives. Fewer failed deliveries, happier customers.",
+    hero_h1:'Tell your customer <span class="hl">when the parcel leaves — and when it arrives</span>',
+    hero_lead:"Fewer failed deliveries. Happier customers. More repeat orders.",
+    hero_cta:"I want to try it", hero_cta2:"How it works",
+    offer_q:'Would you like to <em>notify the recipient</em> when delivery starts and the expected arrival time?',
+    f1_h:"The customer knows it's on the way", f1_p:"Automatic Viber or SMS message the moment you ship the order.",
+    f2_h:"And roughly when it arrives", f2_p:"An approximate arrival time — the customer is home, delivery succeeds on the first try.",
+    f3_h:"Tracking on a single link", f3_p:"No app to install — the customer opens the status in a browser.",
+    form_h:"Leave your contact", form_sub:"We'll reach out and show you how it works. No commitment.",
+    lbl_shop:'Shop name <span class="req">*</span>',
+    lbl_contact:'Email or phone / Viber <span class="req">*</span>',
+    lbl_volume:"Orders per month (approx.)", opt_choose:"— choose —",
+    lbl_msg:"Message (optional)", form_btn:"Send request",
+    form_note:"We use your contact only to reach out about Javi.",
+    ok_h:"Thank you!", ok_p:"We received your request and will be in touch soon.",
+    foot:"Delivery notifications for shops in Serbia"
+  },
+  ru:{
+    meta_title:"Javi — сообщите покупателю, когда посылка в пути",
+    meta_desc:"Javi уведомляет ваших покупателей, когда доставка началась и когда приедет. Меньше срывов, довольные клиенты.",
+    hero_h1:'Сообщите покупателю, <span class="hl">когда посылка выехала — и когда приедет</span>',
+    hero_lead:"Меньше срывов доставки. Довольные покупатели. Больше повторных заказов.",
+    hero_cta:"Хочу попробовать", hero_cta2:"Как это работает",
+    offer_q:'Хотели бы вы <em>уведомлять получателя</em> о начатой доставке и времени прибытия?',
+    f1_h:"Покупатель знает, что посылка выехала", f1_p:"Автоматическое сообщение в Viber или SMS сразу после отправки заказа.",
+    f2_h:"И когда примерно приедет", f2_p:"Примерное время прибытия — покупатель дома, доставка проходит с первого раза.",
+    f3_h:"Отслеживание по одной ссылке", f3_p:"Без установки приложения — покупатель открывает статус в браузере.",
+    form_h:"Оставьте контакт", form_sub:"Свяжемся и покажем, как это работает. Без обязательств.",
+    lbl_shop:'Название магазина <span class="req">*</span>',
+    lbl_contact:'Email или телефон / Viber <span class="req">*</span>',
+    lbl_volume:"Заказов в месяц (примерно)", opt_choose:"— выберите —",
+    lbl_msg:"Сообщение (необязательно)", form_btn:"Отправить заявку",
+    form_note:"Контакт используем только чтобы связаться с вами по поводу Javi.",
+    ok_h:"Спасибо!", ok_p:"Мы получили вашу заявку и скоро свяжемся.",
+    foot:"Уведомления о доставке для магазинов в Сербии"
+  }
+};
+
+function setLang(lang){
+  const dict = I18N[lang] || I18N.sr;
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if(!dict[key]) return;
+    if(el.tagName==='META'){ el.setAttribute('content',dict[key]); }
+    else if(el.tagName==='TITLE'){ el.textContent = dict[key]; }
+    else { el.innerHTML = dict[key]; }
+  });
+  document.querySelectorAll('#langs button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.lang===lang);
+  });
+  const fl = document.getElementById('f_lang'); if(fl) fl.value = lang;
+  try{ localStorage.setItem('javi_lang', lang); }catch(e){}
+}
+
+// language buttons
+document.querySelectorAll('#langs button').forEach(b=>{
+  b.addEventListener('click',()=>setLang(b.dataset.lang));
+});
+
+// initial language: saved → browser → default sr
+(function(){
+  let lang = null;
+  try{ lang = localStorage.getItem('javi_lang'); }catch(e){}
+  if(!lang){
+    const nav = (navigator.language||'sr').slice(0,2).toLowerCase();
+    lang = ['sr','en','ru'].includes(nav) ? nav : 'sr';
+  }
+  setLang(lang);
+})();
+
+// UTM capture for ad attribution (Google / Telegram)
+(function(){
+  const p = new URLSearchParams(location.search);
+  const map = {utm_source:'f_utm_source',utm_medium:'f_utm_medium',utm_campaign:'f_utm_campaign'};
+  Object.keys(map).forEach(k=>{
+    const el = document.getElementById(map[k]);
+    if(el && p.get(k)) el.value = p.get(k);
+  });
+})();
+
+// form submit (AJAX to Formspree-style endpoint; falls back to normal POST)
+const form = document.getElementById('leadForm');
+form.addEventListener('submit', async (e)=>{
+  const action = form.getAttribute('action')||'';
+  if(action.includes('YOUR_FORM_ID')) return; // not configured → let it POST normally / no-op
+  e.preventDefault();
+  try{
+    const res = await fetch(action,{method:'POST',body:new FormData(form),headers:{'Accept':'application/json'}});
+    if(res.ok){
+      document.getElementById('formBox').style.display='none';
+      document.getElementById('okMsg').style.display='block';
+    }else{ form.submit(); }
+  }catch(err){ form.submit(); }
+});
+</script>
+</body>
+</html>

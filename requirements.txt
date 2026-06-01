@@ -1,1 +1,12 @@
-requests>=2.31.0 
+# Production runtime dependencies. Pinned deliberately.
+# Dev/lint/test tools live in requirements-dev.txt.
+
+# --- Web framework ---
+Django==5.1.3
+
+# --- WSGI server & static serving ---
+gunicorn==23.0.0
+whitenoise==6.8.2
+
+# --- HTTP ---
+requests==2.32.3

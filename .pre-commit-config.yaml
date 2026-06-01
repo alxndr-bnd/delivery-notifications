@@ -1,0 +1,23 @@
+# Runs checks before every commit. Setup once per clone:  pre-commit install
+#
+# Phase 0 ships ONLY the static landing — so the gate is intentionally light
+# and does NOT touch Django (the Django app stays in the repo but is not built
+# or deployed yet). Django linting/tests become a gate at Phase 1.
+minimum_pre_commit_version: "3.5.0"
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml          # validates deploy.yaml etc.
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: landing-html
+        name: landing HTML parses
+        entry: python3 -c "import html.parser,sys; html.parser.HTMLParser().feed(open('landing/index.html',encoding='utf-8').read()); print('landing OK')"
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

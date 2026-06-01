@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
+{% block title %}Создать заявку - Transport1P{% endblock %}
 
 {% block content %}
-    <title>Create Request</title>
     <script>
         // Функция для установки даты в поле
         function setDate(date) {
@@ -30,40 +30,39 @@
             return today.toISOString().split('T')[0];
         }
     </script>
-</head>
-
-    <h1>Создать новую заявку</h1>
-    <form method="post">
-        {% csrf_token %}
-        
-        <!-- Отображаем описание объекта и контактный email -->
-        <div>
-            <label for="id_description">Описание объекта перевозки</label>
-            <input type="text" id="id_description" name="description" required>
+    <h1 class="h4 mb-3">Создать новую заявку</h1>
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                <div class="col-12">
+                    <label for="id_description" class="form-label">Описание объекта перевозки</label>
+                    <input type="text" id="id_description" name="description" required class="form-control">
+                </div>
+                {% if user.is_authenticated %}
+                    <div class="col-12">
+                        <label for="id_contact_email" class="form-label">Контактный email</label>
+                        <input type="email" id="id_contact_email" name="contact_email" value="{{ user.email }}" readonly class="form-control">
+                    </div>
+                {% else %}
+                    <div class="col-12">
+                        <label for="id_contact_email" class="form-label">Контактный email</label>
+                        <input type="email" id="id_contact_email" name="contact_email" required class="form-control">
+                    </div>
+                {% endif %}
+                <div class="col-12">
+                    <label for="id_desired_date" class="form-label">Желаемая дата</label>
+                    <input type="date" id="id_desired_date" name="desired_date" required class="form-control">
+                    <div class="mt-2 d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDate(getTodayDate())">Сегодня</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDate(getTomorrowDate())">Завтра</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDate(getNextMonday())">Понедельник</button>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
         </div>
-
-        {% if user.is_authenticated %}
-            <div>
-                <label for="id_contact_email">Контактный email</label>
-                <input type="email" id="id_contact_email" name="contact_email" value="{{ user.email }}" readonly>
-            </div>
-        {% else %}
-            <div>
-                <label for="id_contact_email">Контактный email</label>
-                <input type="email" id="id_contact_email" name="contact_email" required>
-            </div>
-        {% endif %}
-
-        <!-- Оставляем только графический выбор даты -->
-        <div>
-            <label for="id_desired_date">Desired Date</label>
-            <input type="date" id="id_desired_date" name="desired_date" required>
-            <a href="#" onclick="setDate(getTodayDate())">Сегодня</a>
-            <a href="#" onclick="setDate(getTomorrowDate())">Завтра</a>
-            <a href="#" onclick="setDate(getNextMonday())">Понедельник</a>
-        </div>
-
-        <button type="submit">Submit</button>
-    </form>
-
+    </div>
 {% endblock %}

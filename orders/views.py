@@ -37,27 +37,49 @@ def create_response(request, request_id):
     return render(request, 'create_response.html', {'form': form, 'request': request_obj})
 
 def request_detail(request, request_id):
-    request_obj = get_object_or_404(Request, id=request_id)  # Получаем заявку по ID
-    responses = request_obj.responses.all()  # Все отклики на заявку
+    request_obj = get_object_or_404(Request, id=request_id)
+    responses = request_obj.responses.all()
+    existing_response = None
 
-    # Форма отклика
+    if request.user.is_authenticated and request.user.role == 'CARRIER':
+        existing_response = Response.objects.filter(request=request_obj, carrier=request.user).first()
+
+    # Инициализация формы (по умолчанию для GET-запросов)
+    form = ResponseForm(initial={'price': existing_response.price if existing_response else None})
+
     if request.method == "POST":
         form = ResponseForm(request.POST)
         if form.is_valid():
-            response = form.save(commit=False)
-            response.request = request_obj  # Привязываем отклик к заявке
-            response.carrier = request.user  # Привязываем отклик к текущему пользователю (перевозчику)
-            response.save()
-            return redirect('request_detail', request_id=request_obj.id)  # Перенаправляем на страницу заявки
-    else:
-        form = ResponseForm()
+            try:
+                response, created = Response.objects.get_or_create(
+                    request=request_obj,
+                    carrier=request.user,
+                    defaults={
+                        'price': form.cleaned_data['price'],
+                        'message': form.cleaned_data.get('message', ''),
+                    }
+                )
+                if not created:
+                    # Обновите существующий отклик, если он уже есть
+                    response.price = form.cleaned_data['price']
+                    response.message = form.cleaned_data.get('message', response.message)
+                    response.save()
+                return redirect('request_detail', request_id=request_obj.id)
+            except IntegrityError:
+                form.add_error(None, "Ошибка: вы уже откликнулись на эту заявку.")
 
+    return render(request, 'request_detail.html', {
+        'request': request_obj,
+        'form': form,
+        'responses': responses,
+        'existing_response': existing_response,
+    })
+    
     # Фильтрация откликов по пользователю
     if request.user == request_obj.created_by:
         responses = request_obj.responses.all()  # Получаем все отклики для заявки
 
     return render(request, 'request_detail.html', {'request': request_obj, 'form': form, 'responses': responses})
-
 
 def request_list(request):
     # Извлекаем все заявки

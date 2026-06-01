@@ -1,4 +1,42 @@
-orders/__pycache__/forms.cpython-313.pyc
-orders/__pycache__/urls.cpython-313.pyc
-orders/__pycache__/views.cpython-313.pyc
-transport_site/__pycache__/settings.cpython-313.pyc
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtualenv
+venv/
+.venv/
+env/
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-journal
+/static/
+/media/
+local_settings.py
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+
+# BMAD-METHOD (tooling, not project code)
+.claude/
+_bmad/
+_bmad-output/
+
+# Playwright MCP scratch / screenshots
+.playwright-mcp/
+javi-*.png
