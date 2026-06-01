@@ -6,6 +6,41 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f7cff'/%3E%3Ctext x='50' y='72' font-size='62' font-family='Arial,sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3Ej%3C/text%3E%3C/svg%3E">
 <title data-i18n="meta_title">Javi — obavestite kupca kada paket stiže</title>
 <meta name="description" data-i18n="meta_desc" content="Javi obaveštava vaše kupce kada isporuka kreće i kada stiže. Manje neuspešnih isporuka, zadovoljniji kupci.">
+<link rel="canonical" href="https://javi.serbito.rs/">
+
+<!-- Open Graph / Twitter — link preview cards for Viber/Telegram/WhatsApp/Facebook.
+     Static (crawlers don't run JS); defaults to Serbian, the primary market. -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://javi.serbito.rs/">
+<meta property="og:site_name" content="Javi">
+<meta property="og:locale" content="sr_RS">
+<meta property="og:title" content="Javi — obavestite kupca kada paket stiže">
+<meta property="og:description" content="Automatska Viber/SMS obaveštenja kupcima kada isporuka kreće i kada stiže. Manje neuspešnih isporuka, zadovoljniji kupci.">
+<meta property="og:image" content="https://javi.serbito.rs/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Javi — obaveštenja o isporuci za prodavnice">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Javi — obavestite kupca kada paket stiže">
+<meta name="twitter:description" content="Automatska Viber/SMS obaveštenja kupcima kada isporuka kreće i kada stiže.">
+<meta name="twitter:image" content="https://javi.serbito.rs/og.png">
+
+<!-- Structured data: helps Google understand the site/brand -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Javi",
+  "url": "https://javi.serbito.rs/",
+  "inLanguage": "sr-RS",
+  "description": "Automatska obaveštenja kupcima o statusu isporuke — za prodavnice u Srbiji.",
+  "publisher": { "@type": "Organization", "name": "Javi", "url": "https://javi.serbito.rs/" }
+}
+</script>
+
+<!-- Cloudflare Web Analytics (cookieless) -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon='{"token": "39897a83853c4f609174d17d01c68caf"}'></script>
 <style>
   :root{
     --bg:#0f1320; --card:#171c2e; --ink:#f4f6fb; --muted:#a9b2c9;
@@ -173,6 +208,7 @@
 
   <footer>
     <p>© 2026 Javi · javi.serbito.rs · <span data-i18n="foot">Obaveštenja o isporuci za prodavnice u Srbiji</span></p>
+    <p><a href="/privacy.html" data-i18n="priv">Politika privatnosti</a></p>
   </footer>
 
 </div>
@@ -196,7 +232,8 @@ const I18N = {
     lbl_msg:"Poruka (opciono)", form_btn:"Pošalji prijavu",
     form_note:"Kontakt koristimo samo da vam se javimo povodom Javi.",
     ok_h:"Hvala!", ok_p:"Primili smo vašu prijavu i javljamo vam se uskoro.",
-    foot:"Obaveštenja o isporuci za prodavnice u Srbiji"
+    foot:"Obaveštenja o isporuci za prodavnice u Srbiji",
+    priv:"Politika privatnosti"
   },
   en:{
     meta_title:"Javi — tell your customer when the parcel is on the way",
@@ -215,7 +252,8 @@ const I18N = {
     lbl_msg:"Message (optional)", form_btn:"Send request",
     form_note:"We use your contact only to reach out about Javi.",
     ok_h:"Thank you!", ok_p:"We received your request and will be in touch soon.",
-    foot:"Delivery notifications for shops in Serbia"
+    foot:"Delivery notifications for shops in Serbia",
+    priv:"Privacy policy"
   },
   ru:{
     meta_title:"Javi — сообщите покупателю, когда посылка в пути",
@@ -234,7 +272,8 @@ const I18N = {
     lbl_msg:"Сообщение (необязательно)", form_btn:"Отправить заявку",
     form_note:"Контакт используем только чтобы связаться с вами по поводу Javi.",
     ok_h:"Спасибо!", ok_p:"Мы получили вашу заявку и скоро свяжемся.",
-    foot:"Уведомления о доставке для магазинов в Сербии"
+    foot:"Уведомления о доставке для магазинов в Сербии",
+    priv:"Политика конфиденциальности"
   }
 };
 
