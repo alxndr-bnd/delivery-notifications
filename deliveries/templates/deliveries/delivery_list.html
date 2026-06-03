@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Dostave · Javi{% endblock %}
+{% block body %}
+<div class="wrap">
+  <div class="topbar">
+    <div class="logo">javi<span>.</span></div>
+    <form method="post" action="{% url 'accounts:logout' %}" style="margin:0">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">Odjava</button>
+    </form>
+  </div>
+
+  <div class="h">Aktivne dostave · danas</div>
+
+  {% if deliveries %}
+    {% for d in deliveries %}
+      <div class="card">{{ d }}</div>
+    {% endfor %}
+  {% else %}
+    <div class="empty">
+      <div class="big">📦</div>
+      <div>Nema dostava danas.</div>
+      <div class="muted" style="font-size:13px;margin-top:6px">Dodajte prvu dostavu dugmetom ispod.</div>
+    </div>
+  {% endif %}
+</div>
+
+<div class="fab">
+  <a class="btn btn-primary" aria-disabled="true" title="Uskoro">＋ Nova dostava</a>
+</div>
+{% endblock %}

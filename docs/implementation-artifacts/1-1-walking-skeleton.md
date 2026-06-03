@@ -1,6 +1,10 @@
+---
+baseline_commit: 865aee61c9425943172c341a664750733312486c
+---
+
 # Story 1.1: Вход магазина и кабинет доставок на проде (walking skeleton)
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Validation optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,39 +27,39 @@ so that у меня есть рабочее место для доставок, 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Greenfield-скелет проекта (удалить старый Django, сохранить лендинг)** (AC: #1)
-  - [ ] Удалить старый Django: `orders/`, проект `transport_site/`, `manage.py` старый, `db.sqlite3` (greenfield — подтверждено заказчиком). **Сохранить** `landing/`, `.github/workflows/deploy.yaml`, `SETUP_CICD.md`, `scripts/`.
-  - [ ] `uv init` + `pyproject.toml`; зависимости: `uv add "Django>=6.0,<6.1" gunicorn "psycopg[binary]" whitenoise django-environ`; dev: `uv add --dev pytest-django ruff`.
-  - [ ] `uv run django-admin startproject config .` (проект `config/`).
-  - [ ] `config/settings.py` env-driven (django-environ): `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `DATABASES` (Postgres из env; локально — Postgres или env-переключатель), `USE_TZ=True`, `TIME_ZONE="Europe/Belgrade"`, `LANGUAGE_CODE="sr-latn"`, статика через whitenoise, `STATIC_ROOT`. `.env.example`.
-  - [ ] `ruff`-конфиг в `pyproject.toml`; обновить `.pre-commit-config.yaml` под Python/ruff; `pytest.ini`/`pyproject` секция pytest-django (`DJANGO_SETTINGS_MODULE=config.settings`).
-- [ ] **Task 2: Скелет доменных apps** (AC: #1)
-  - [ ] Создать apps: `accounts`, `deliveries`, `notifications`, `integrations`, `tracking`, `tasks`, `common` (`uv run python manage.py startapp <name>` или каталоги). Зарегистрировать в `INSTALLED_APPS`. В 1.1 содержательны только `accounts` и `deliveries`; остальные — пустые скелеты с `apps.py`.
-  - [ ] `common/` — заготовки `phone.py`, `timewindow.py`, `logging.py` (пустые/TODO, наполнятся в Epic 2/3).
-- [ ] **Task 3: Модель пользователя и Shop + изоляция** (AC: #1, #4)
-  - [ ] `accounts`: кастомный `User` (email как логин, без username) ИЛИ email-бэкенд аутентификации; `AUTH_USER_MODEL`.
-  - [ ] `deliveries.models.Shop` (1:1 `User`): `name`, поля origin-адреса как заглушки на будущее (origin наполняется в 1.2). Миграции.
-  - [ ] Хелпер получения текущего `Shop` по `request.user`; базовый queryset-скоупинг доставок по `shop` (модель Delivery ещё не создаётся — это 1.3; пока экран показывает пустой список, скоупленный по shop).
-  - [ ] Минимальный способ завести магазин: management-команда `create_shop` (email, пароль, name) ИЛИ простая регистрация. Для скелета достаточно команды + Django admin.
-- [ ] **Task 4: Аутентификация (email+пароль)** (AC: #2, #3)
-  - [ ] Вход/выход (Django auth: `LoginView`/`LogoutView` с email-формой), `LOGIN_URL`, `LOGIN_REDIRECT_URL=/app/`.
-  - [ ] Экран входа — мобайл-first, светлая тема, бренд Javi.
-- [ ] **Task 5: Экран кабинета «Dostave» (пустой) + лейаут** (AC: #2, #4)
-  - [ ] `deliveries` view `DeliveryListView` (login_required) под `/app/`: показывает группы (U dostavi / Spremno / Završeno) — сейчас пусто → empty-state «Nema dostava danas».
-  - [ ] Постоянная кнопка **«＋ Nova dostava»** (в 1.1 ведёт на заглушку/disabled — форма создаётся в 1.3).
-  - [ ] `templates/base.html` (мобайл-first, светлая тема), CSS-переменные из DESIGN.md (bg #f4f6fb, surface #fff, ink #161b29, brand #4f7cff…), system-ui, статика через whitenoise. Строки на сербском (латиница) по EXPERIENCE.md.
-- [ ] **Task 6: Маршрутизация + сохранение лендинга** (AC: #5)
-  - [ ] `config/urls.py`: `/` → отдаёт существующий лендинг Этапа 0 (TemplateView/`landing/index.html` или static), `/app/` → кабинет (login_required), `/accounts/login|logout/`. `/static/` (whitenoise). Не сломать Formspree-форму лендинга.
-  - [ ] Лендинг-ассеты (`landing/og.png`, privacy.html, robots.txt, sitemap.xml) продолжают отдаваться по тем же путям.
-- [ ] **Task 7: Контейнер и деплой** (AC: #6)
-  - [ ] Заменить `Dockerfile` (nginx Этапа 0 → python:3.12-slim + uv/pip install + gunicorn `config.wsgi` + whitenoise + `collectstatic` + миграции на старте/в entrypoint). Обновить `.dockerignore`.
-  - [ ] **БД: переиспользовать существующий инстанс `serbitodb`** (POSTGRES_17, europe-west1, проект serbito) — создать на нём **отдельную базу `javi` + выделенного пользователя `javi`** с правами только на эту базу (изоляция от данных serbito; нулевая доп. стоимость). Подключить Cloud Run `javi` через Cloud SQL connector (instance `serbito:europe-west1:serbitodb`). Креды/`SECRET_KEY` — в Secret Manager, проброс в Cloud Run.
-  - [ ] Деплой по тегу через существующий workflow; smoke-check на проде: `https://javi.serbito.rs/` = лендинг, `/app/` = редирект на вход → вход работает.
-- [ ] **Task 8: Тесты (pytest-django)** (AC: #1–#4)
-  - [ ] Анонимный → `/app/` редиректит на вход (AC#3).
-  - [ ] Магазин-A видит свой пустой список; не видит данные магазина-B (AC#4).
-  - [ ] Вход по email+паролю успешен; `Shop` создаётся командой/фикстурой.
-  - [ ] `manage.py check`, `pytest`, `ruff check` — зелёные (AC#1).
+- [x] **Task 1: Greenfield-скелет проекта (удалить старый Django, сохранить лендинг)** (AC: #1)
+  - [x] Удалён старый Django (`orders/`, `transport_site/`, `manage.py`, `db.sqlite3`, `venv/`, `nginx.conf`); сохранены `landing/`, `.github/`, `SETUP_CICD.md`, `scripts/`, `docs/`.
+  - [x] `uv init` + зависимости (Django 6.0.5, gunicorn, psycopg[binary], whitenoise, django-environ; dev: pytest-django, ruff).
+  - [x] `django-admin startproject config .`.
+  - [x] `config/settings.py` env-driven (USE_TZ, TIME_ZONE Europe/Belgrade, LANGUAGE_CODE sr-latn, whitenoise, STATIC_ROOT, DATABASE_URL); `.env.example`.
+  - [x] ruff + pytest-django конфиг в `pyproject.toml`; `.pre-commit-config.yaml` обновлён (ruff + django-check).
+- [x] **Task 2: Скелет доменных apps** (AC: #1)
+  - [x] apps accounts/deliveries/notifications/integrations/tracking/tasks/common зарегистрированы в INSTALLED_APPS.
+  - [x] `common/` заготовки `phone.py`, `timewindow.py`, `logging.py` (TODO для Epic 2/3).
+- [x] **Task 3: Модель пользователя и Shop + изоляция** (AC: #1, #4)
+  - [x] Кастомный `accounts.User` (email-логин, без username) + `UserManager`; `AUTH_USER_MODEL`.
+  - [x] `deliveries.Shop` (1:1 User): name + origin-заглушки; миграции.
+  - [x] Скоуп по `request.user.shop` в `DeliveryListView`.
+  - [x] management-команда `create_shop` (email/пароль/name) + Django admin.
+- [x] **Task 4: Аутентификация (email+пароль)** (AC: #2, #3)
+  - [x] `LoginView`/`LogoutView`, `LOGIN_URL`, `LOGIN_REDIRECT_URL=/app/`, `LOGOUT_REDIRECT_URL=/`.
+  - [x] Экран входа — мобайл-first, светлая тема, бренд.
+- [x] **Task 5: Экран кабинета «Dostave» (пустой) + лейаут** (AC: #2, #4)
+  - [x] `DeliveryListView` (login_required) под `/app/`, empty-state «Nema dostava danas».
+  - [x] Постоянная «＋ Nova dostava» (disabled-заглушка до 1.3).
+  - [x] `templates/base.html` + `static/css/app.css` (токены DESIGN.md), sr-латиница.
+- [x] **Task 6: Маршрутизация + сохранение лендинга** (AC: #5)
+  - [x] `config/urls.py`: `/app/`, `/accounts/`, `/admin/`. Лендинг на `/` через WhiteNoise (`WHITENOISE_ROOT=landing`, `WHITENOISE_INDEX_FILE`).
+  - [x] Проверено локально: `/`, `/privacy.html`, `/robots.txt`, `/sitemap.xml`, `/og.png` → 200; Formspree-форма на месте.
+- [~] **Task 7: Контейнер и деплой** (AC: #6) — _код готов, прод-инфра/деплой ждут go заказчика_
+  - [x] `Dockerfile` (python:3.12-slim + uv + gunicorn + whitenoise + collectstatic + миграции на старте); `.dockerignore` обновлён; `deploy.yaml` — Cloud SQL + секреты + env.
+  - [ ] БД `javi` + пользователь на `serbitodb`; Secret Manager (`javi-secret-key`, `javi-database-url`); роли runtime-SA (cloudsql.client, secretmanager.secretAccessor). **(требует go — создаёт ресурсы)**
+  - [ ] Деплой по тегу; smoke-check прод: `/` = лендинг, `/app/` = вход. **(требует go — трогает живой сервис)**
+- [x] **Task 8: Тесты (pytest-django)** (AC: #1–#4)
+  - [x] Аноним → `/app/` 302 на вход.
+  - [x] Магазин видит пустой кабинет; изоляция по shop.
+  - [x] Вход по email+паролю; `create_shop`.
+  - [x] `manage.py check`, `pytest` (6 passed), `ruff check` — зелёные.
 
 ## Dev Notes
 
@@ -90,8 +94,35 @@ claude-opus-4-8 (1M context)
 
 ### Debug Log References
 
+- manifest-storage статики ломала pytest без collectstatic → backend статики сделан переключаемым через env (`STATICFILES_BACKEND`), прод включает WhiteNoise manifest.
+- `--set-env-vars` конфликтует с запятыми в ALLOWED_HOSTS → кастомный разделитель gcloud `^@@^`.
+
 ### Completion Notes List
 
-- Ultimate context engine analysis completed — comprehensive developer guide created.
+- Реализован walking skeleton локально: greenfield Django 6.0.5, кастомный User (email), Shop, вход/выход, кабинет `/app/` (пустой, скоуп по магазину), команда `create_shop`.
+- Лендинг Этапа 0 сохранён: отдаётся WhiteNoise на `/` (+ /privacy.html, /robots.txt, /sitemap.xml, /og.png), Formspree-форма цела. AC#5 ✅.
+- Контейнер/деплой подготовлены (Dockerfile Django+gunicorn, .dockerignore, deploy.yaml с Cloud SQL+секретами). **AC#6 (прод-деплой) НЕ закрыт** — ждёт go: создание БД `javi`+пользователя на `serbitodb`, Secret Manager секретов, ролей runtime-SA, и тег-деплоя (трогает живой сервис).
+- Проверки зелёные: `manage.py check`, `pytest` (6 passed), `ruff check`. AC#1–#4 ✅.
+- Статус истории — `in-progress` (не `review`): Task 7 (прод) не завершён.
 
 ### File List
+
+**Новые:**
+- pyproject.toml, uv.lock, .env.example
+- config/settings.py (перезапись), config/urls.py (перезапись)
+- accounts/{models,admin,urls,tests}.py, accounts/migrations/0001_initial.py
+- accounts/management/commands/create_shop.py (+ __init__.py)
+- deliveries/{models,admin,views,urls,tests}.py, deliveries/migrations/0001_initial.py
+- deliveries/templates/deliveries/delivery_list.html
+- notifications/, integrations/, tracking/, tasks/, common/ (скелеты apps)
+- common/{phone,timewindow,logging}.py (заглушки)
+- templates/base.html, templates/accounts/login.html
+- static/css/app.css
+
+**Изменены:**
+- Dockerfile (nginx → Django/gunicorn), .dockerignore, .gitignore
+- .pre-commit-config.yaml (ruff + django-check)
+- .github/workflows/deploy.yaml (Cloud SQL + секреты + env)
+
+**Удалены (greenfield):**
+- orders/, transport_site/, manage.py(старый)→пересоздан, db.sqlite3, nginx.conf, venv/, старые requirements*.txt/pyproject.toml

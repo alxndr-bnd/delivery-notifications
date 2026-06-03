@@ -1,20 +1,30 @@
-[tool.ruff]
-line-length = 100
-target-version = "py313"
-extend-exclude = [
-    "*/migrations/*",
-    "venv",
-    ".venv",
-    "staticfiles",
-    "static",
-    "landing",
+[project]
+name = "javi"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.0,<6.1",
+    "django-environ>=0.13.0",
+    "gunicorn>=26.0.0",
+    "psycopg[binary]>=3.3.4",
+    "whitenoise>=6.12.0",
 ]
 
-[tool.ruff.lint]
-# Conservative set for a legacy codebase: pyflakes + key pycodestyle errors.
-# Widen as the code is cleaned up.
-select = ["E4", "E7", "E9", "F"]
-ignore = [
-    "E722",  # bare except — present in legacy views
-    "F401",  # unused imports — clean up incrementally
+[dependency-groups]
+dev = [
+    "pytest-django>=4.12.0",
+    "ruff>=0.15.15",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["landing", "migrations", "_bmad", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py", "tests.py"]
+addopts = "-q"

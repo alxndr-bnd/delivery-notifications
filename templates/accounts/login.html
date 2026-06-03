@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Prijava · Javi{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="logo" style="margin-bottom:18px">javi<span>.</span></div>
+  <h1>Prijava</h1>
+  <form method="post" action="{% url 'accounts:login' %}">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+    <div class="field">
+      <label for="id_username">Email</label>
+      <input type="email" name="username" id="id_username" autocomplete="email" required autofocus>
+    </div>
+    <div class="field">
+      <label for="id_password">Lozinka</label>
+      <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Prijavi se</button>
+  </form>
+</div>
+{% endblock %}
