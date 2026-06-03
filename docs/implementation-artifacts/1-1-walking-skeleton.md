@@ -4,7 +4,7 @@ baseline_commit: 865aee61c9425943172c341a664750733312486c
 
 # Story 1.1: Вход магазина и кабинет доставок на проде (walking skeleton)
 
-Status: in-progress
+Status: review
 
 <!-- Validation optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -51,10 +51,11 @@ so that у меня есть рабочее место для доставок, 
 - [x] **Task 6: Маршрутизация + сохранение лендинга** (AC: #5)
   - [x] `config/urls.py`: `/app/`, `/accounts/`, `/admin/`. Лендинг на `/` через WhiteNoise (`WHITENOISE_ROOT=landing`, `WHITENOISE_INDEX_FILE`).
   - [x] Проверено локально: `/`, `/privacy.html`, `/robots.txt`, `/sitemap.xml`, `/og.png` → 200; Formspree-форма на месте.
-- [~] **Task 7: Контейнер и деплой** (AC: #6) — _код готов, прод-инфра/деплой ждут go заказчика_
+- [x] **Task 7: Контейнер и деплой** (AC: #6)
   - [x] `Dockerfile` (python:3.12-slim + uv + gunicorn + whitenoise + collectstatic + миграции на старте); `.dockerignore` обновлён; `deploy.yaml` — Cloud SQL + секреты + env.
-  - [ ] БД `javi` + пользователь на `serbitodb`; Secret Manager (`javi-secret-key`, `javi-database-url`); роли runtime-SA (cloudsql.client, secretmanager.secretAccessor). **(требует go — создаёт ресурсы)**
-  - [ ] Деплой по тегу; smoke-check прод: `/` = лендинг, `/app/` = вход. **(требует go — трогает живой сервис)**
+  - [x] БД `javi` + пользователь `javi` на `serbitodb`; Secret Manager (`javi-secret-key`, `javi-database-url`); роли runtime-SA (cloudsql.client + secretAccessor на оба секрета).
+  - [x] Деплой тегом `v0.3.0` (CI/CD зелёный); smoke-check прод: `/`→200 (лендинг+Formspree цел), `/app/`→302 на вход, `/accounts/login/`→200, `/privacy.html|/og.png|/robots.txt`→200. Миграции на проде прошли (страница входа рендерится).
+  - [ ] _Завести демо-магазин на проде (`create_shop`) для проверки реального входа — прямой write в прод-БД, ждёт явного одобрения заказчика._
 - [x] **Task 8: Тесты (pytest-django)** (AC: #1–#4)
   - [x] Аноним → `/app/` 302 на вход.
   - [x] Магазин видит пустой кабинет; изоляция по shop.
