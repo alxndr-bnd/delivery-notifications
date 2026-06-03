@@ -55,7 +55,7 @@ so that у меня есть рабочее место для доставок, 
   - [x] `Dockerfile` (python:3.12-slim + uv + gunicorn + whitenoise + collectstatic + миграции на старте); `.dockerignore` обновлён; `deploy.yaml` — Cloud SQL + секреты + env.
   - [x] БД `javi` + пользователь `javi` на `serbitodb`; Secret Manager (`javi-secret-key`, `javi-database-url`); роли runtime-SA (cloudsql.client + secretAccessor на оба секрета).
   - [x] Деплой тегом `v0.3.0` (CI/CD зелёный); smoke-check прод: `/`→200 (лендинг+Formspree цел), `/app/`→302 на вход, `/accounts/login/`→200, `/privacy.html|/og.png|/robots.txt`→200. Миграции на проде прошли (страница входа рендерится).
-  - [ ] _Завести демо-магазин на проде (`create_shop`) для проверки реального входа — прямой write в прод-БД, ждёт явного одобрения заказчика._
+  - [x] Демо-магазин на проде заведён (`create_shop` через cloud-sql-proxy `--gcloud-auth`); end-to-end вход проверен: POST логина → 302 → `/app/` → 200 с empty-state. (Креды демо переданы заказчику в чате, в репо не хранятся.)
 - [x] **Task 8: Тесты (pytest-django)** (AC: #1–#4)
   - [x] Аноним → `/app/` 302 на вход.
   - [x] Магазин видит пустой кабинет; изоляция по shop.
@@ -104,7 +104,9 @@ claude-opus-4-8 (1M context)
 - Лендинг Этапа 0 сохранён: отдаётся WhiteNoise на `/` (+ /privacy.html, /robots.txt, /sitemap.xml, /og.png), Formspree-форма цела. AC#5 ✅.
 - Контейнер/деплой подготовлены (Dockerfile Django+gunicorn, .dockerignore, deploy.yaml с Cloud SQL+секретами). **AC#6 (прод-деплой) НЕ закрыт** — ждёт go: создание БД `javi`+пользователя на `serbitodb`, Secret Manager секретов, ролей runtime-SA, и тег-деплоя (трогает живой сервис).
 - Проверки зелёные: `manage.py check`, `pytest` (6 passed), `ruff check`. AC#1–#4 ✅.
-- Статус истории — `in-progress` (не `review`): Task 7 (прод) не завершён.
+- **Прод (v0.3.0) развёрнут и проверён end-to-end:** demo@pizza.rs логинится → `/app/` 200 с empty-state. AC#1–#6 закрыты. Статус — `review`.
+- Заметка по ADC: cloud-sql-proxy требовал `--gcloud-auth` (application-default creds протухли, invalid_grant).
+- Caveat изоляции: пользователь `javi` создан через gcloud → имеет роль cloudsqlsuperuser, т.е. технически не изолирован от данных serbito на общем инстансе. Для Stage 0 приемлемо; ужесточить при необходимости (отдельный инстанс или ручной REVOKE/GRANT админом).
 
 ### File List
 
