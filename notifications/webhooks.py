@@ -10,8 +10,14 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import Notification
+from .services import opt_out
 
 logger = logging.getLogger(__name__)
+
+
+def _check_secret(request) -> bool:
+    secret = request.GET.get("secret") or request.headers.get("X-Webhook-Secret", "")
+    return bool(settings.INFOBIP_WEBHOOK_SECRET) and secret == settings.INFOBIP_WEBHOOK_SECRET
 
 # Порядок прогресса статуса — не понижаем (idempotent, без даунгрейда read→delivered).
 _ORDER = [
@@ -50,8 +56,7 @@ def _apply(notif: Notification, new_status: str) -> None:
 @csrf_exempt
 def infobip_reports(request):
     """POST от Infobip с delivery/seen receipts. Защита — общий секрет."""
-    secret = request.GET.get("secret") or request.headers.get("X-Webhook-Secret", "")
-    if not settings.INFOBIP_WEBHOOK_SECRET or secret != settings.INFOBIP_WEBHOOK_SECRET:
+    if not _check_secret(request):
         return HttpResponseForbidden("forbidden")
 
     try:
@@ -69,5 +74,24 @@ def infobip_reports(request):
         new_status = _resolve_status(result)
         if new_status:
             _apply(notif, new_status)
+
+    return HttpResponse(status=200)
+
+
+@csrf_exempt
+def infobip_optout(request):
+    """POST от Infobip с opt-out (STOP) → зеркалим номера в блоклист. Защита — секрет."""
+    if not _check_secret(request):
+        return HttpResponseForbidden("forbidden")
+
+    try:
+        payload = json.loads(request.body or b"{}")
+    except ValueError:
+        return HttpResponse(status=400)
+
+    for result in payload.get("results", []):
+        phone = result.get("to") or result.get("phoneNumber") or result.get("destination")
+        if phone:
+            opt_out(phone if str(phone).startswith("+") else f"+{phone}")
 
     return HttpResponse(status=200)

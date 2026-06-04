@@ -18,6 +18,9 @@
     {% endif %}
     {% if d.rating %}<span class="card-rating">{{ d.rating.value }}★</span>{% endif %}
   </div>
+  {% if d.opted_out %}
+    <div class="card-optout">primalac otkazao obaveštenja</div>
+  {% endif %}
 
   {% if d.status == "created" %}
     <form method="post" action="{% url 'deliveries:start' d.pk %}" class="card-action"

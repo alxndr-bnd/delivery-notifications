@@ -82,3 +82,58 @@ def test_wrong_secret_forbidden(client):
         content_type="application/json",
     )
     assert resp.status_code == 403
+
+
+# --- Story 3.2: отписка ---
+
+OPTOUT_URL = "/webhooks/infobip/optout/"
+
+
+def test_opt_out_idempotent():
+    from notifications.models import OptOut
+    from notifications.services import is_opted_out, opt_out
+
+    opt_out("+381641234567")
+    opt_out("+381641234567")
+    assert OptOut.objects.count() == 1
+    assert is_opted_out("+381641234567") is True
+    assert is_opted_out("+381600000000") is False
+
+
+@override_settings(MESSAGING_PROVIDER="integrations.testing.FakeMessagingProvider")
+def test_rating_request_skipped_for_opted_out():
+    """AC#3: отписанному запрос оценки не шлётся, Notification не создаётся."""
+    from deliveries.models import TrackingToken
+    from deliveries.services import send_rating_request
+    from notifications.services import opt_out
+
+    n = _notification()
+    delivery = n.delivery
+    n.delete()  # уберём фоновый on_the_way, оставим чистую доставку
+    TrackingToken.objects.create(delivery=delivery)
+    opt_out(delivery.recipient_phone)
+    assert send_rating_request(delivery) is None
+    assert delivery.notifications.filter(kind=Notification.Kind.RATING_REQUEST).count() == 0
+
+
+@override_settings(INFOBIP_WEBHOOK_SECRET=SECRET)
+def test_optout_webhook_blocklists_number(client):
+    from notifications.models import OptOut
+
+    resp = client.post(
+        f"{OPTOUT_URL}?secret={SECRET}",
+        data=json.dumps({"results": [{"to": "381641234567"}]}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert OptOut.objects.filter(phone="+381641234567").exists()
+
+
+@override_settings(INFOBIP_WEBHOOK_SECRET=SECRET)
+def test_optout_webhook_wrong_secret_403(client):
+    resp = client.post(
+        f"{OPTOUT_URL}?secret=wrong",
+        data=json.dumps({"results": []}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 403

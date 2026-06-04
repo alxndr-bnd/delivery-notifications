@@ -100,6 +100,17 @@ def test_rating_invalid_value_ignored(client):
     assert Rating.objects.count() == 0
 
 
+def test_unsubscribe_adds_to_blocklist(client):
+    """AC#1: ссылка отписки → OptOut + подтверждение."""
+    from notifications.models import OptOut
+
+    token = _token(Delivery.Status.ON_THE_WAY)
+    resp = client.get(f"/t/{token.token}/odjava/")
+    assert resp.status_code == 200
+    assert "Odjavljeni ste" in resp.content.decode()
+    assert OptOut.objects.filter(phone=token.delivery.recipient_phone).exists()
+
+
 @override_settings(TRACKING_RATE_LIMIT=2)
 def test_rate_limit_429(client):
     """AC#5: сверх лимита запросов с одного IP → 429."""

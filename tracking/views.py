@@ -71,6 +71,17 @@ def status(request, token):
     return render(request, "tracking/status.html", ctx)
 
 
+def unsubscribe(request, token):
+    """Отписка получателя по ссылке (без логина): номер → блоклист, «Odjavljeni ste»."""
+    from notifications.services import opt_out
+
+    token_obj = _active_token(token)
+    if token_obj is None:
+        return render(request, "tracking/status.html", {"expired": True}, status=410)
+    opt_out(token_obj.delivery.recipient_phone)
+    return render(request, "tracking/unsubscribed.html", {})
+
+
 @require_POST
 def rate(request, token):
     """Захват оценки 1–5 с публичной страницы (без логина, без дублей)."""

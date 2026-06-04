@@ -452,3 +452,18 @@ def test_mark_delivered_other_shop_404(client):
     client.login(username="a2@shop.rs", password="pass12345")
     resp = client.post(f"/app/dostava/{victim.pk}/isporuceno/")
     assert resp.status_code == 404
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_cabinet_shows_opted_out(client):
+    """Story 3.2 AC#4: магазин видит «otkazao obaveštenja» для отписанного."""
+    from notifications.services import opt_out
+
+    shop = _make_shop_with_origin("oo@shop.rs", "OptOut Shop")
+    delivery, _ = create_delivery(
+        shop, recipient_name="Ana", phone=normalize_phone("064 123 4567"), dest_address="adr"
+    )
+    opt_out(delivery.recipient_phone)
+    client.login(username="oo@shop.rs", password="pass12345")
+    body = client.get("/app/").content.decode()
+    assert "otkazao obaveštenja" in body

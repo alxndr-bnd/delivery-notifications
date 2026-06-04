@@ -46,3 +46,14 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.kind} → delivery {self.delivery_id} ({self.status})"
+
+
+class OptOut(models.Model):
+    """Блоклист: номер, отписавшийся от не-критичных сообщений (зеркалит Infobip)."""
+
+    phone = models.CharField("телефон (E.164)", max_length=20, unique=True)
+    scope = models.CharField(max_length=10, default="number")  # number | shop (later)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.phone

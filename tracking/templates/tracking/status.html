@@ -29,6 +29,10 @@
       {% endfor %}
     </ol>
 
+    <div class="track-unsub">
+      <a href="{% url 'tracking:unsubscribe' token %}">Odjavi se sa obaveštenja</a>
+    </div>
+
     {% if rating %}
       <div class="rate-done">Hvala! Vaša ocena: {{ rating }}★</div>
     {% elif can_rate %}

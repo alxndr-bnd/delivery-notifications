@@ -14,6 +14,7 @@ from common.phone import PhoneResult
 from common.timewindow import format_eta, rating_send_time
 from integrations.providers import get_maps_provider, get_messaging_provider, get_routes_provider
 from notifications.models import Notification
+from notifications.services import is_opted_out
 from tasks.scheduler import get_task_scheduler
 
 from .models import Delivery, Shop, TrackingToken
@@ -191,7 +192,8 @@ def send_rating_request(delivery: Delivery):
     token_obj = getattr(delivery, "tracking_token", None)
     if token_obj is None:
         return None
-    # TODO(Story 3.2): не слать отписанным (проверка OptOut).
+    if is_opted_out(delivery.recipient_phone):
+        return None  # не-критичное сообщение отписавшимся не шлём (FR-23)
     notification = Notification.objects.create(
         delivery=delivery,
         kind=Notification.Kind.RATING_REQUEST,

@@ -8,7 +8,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from common.timewindow import BELGRADE, format_eta
-from notifications.models import Notification
+from notifications.models import Notification, OptOut
 
 from .forms import DeliveryForm, ManualEtaForm, RecipientPhoneForm, ShopOriginForm
 from .models import Delivery
@@ -34,6 +34,15 @@ class DeliveryListView(LoginRequiredMixin, TemplateView):
             d.on_the_way_notif = next(
                 (n for n in d.notifications.all() if n.kind == Notification.Kind.ON_THE_WAY), None
             )
+        # Отписавшиеся номера среди доставок магазина — одним запросом.
+        phones = {d.recipient_phone for d in deliveries}
+        opted = (
+            set(OptOut.objects.filter(phone__in=phones).values_list("phone", flat=True))
+            if phones
+            else set()
+        )
+        for d in deliveries:
+            d.opted_out = d.recipient_phone in opted
         ctx["shop"] = shop
         ctx["deliveries"] = deliveries
         ctx["u_dostavi"] = [d for d in deliveries if d.status == Delivery.Status.ON_THE_WAY]
