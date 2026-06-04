@@ -27,7 +27,7 @@ class CachingMapsProvider(MapsProvider):
 
         cached = GeocodeCache.objects.filter(normalized_address=key).first()
         if cached is not None:
-            return GeocodeResult(cached.lat, cached.lng, cached.formatted_address)
+            return GeocodeResult(cached.lat, cached.lng, cached.formatted_address, cached.city)
 
         result = self.inner.geocode(address)
         if result is not None:
@@ -37,6 +37,7 @@ class CachingMapsProvider(MapsProvider):
                     "lat": result.lat,
                     "lng": result.lng,
                     "formatted_address": result.formatted_address,
+                    "city": result.city,
                 },
             )
         return result

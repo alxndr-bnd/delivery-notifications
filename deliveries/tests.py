@@ -186,6 +186,7 @@ def test_create_delivery_geocode_success():
     assert delivery.phone_risk is False
     assert delivery.dest_lat == pytest.approx(44.8167)
     assert delivery.dest_address == "Knez Mihailova 6, Beograd, Srbija"
+    assert delivery.dest_city == "Beograd"
     assert delivery.status == Delivery.Status.CREATED
 
 

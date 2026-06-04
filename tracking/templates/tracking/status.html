@@ -3,21 +3,31 @@
 {% block body %}
 <div class="track">
   {% if expired %}
-    <div class="track-card">
+    <div class="track-card track-card--plain">
       <div class="muted">Link je istekao.</div>
     </div>
   {% else %}
     <div class="track-card">
       <div class="track-shop">{{ shop_name }}</div>
-      {% if status == "on_the_way" %}
+      {% if status == "delivered" %}
+        <div class="track-status">Porudžbina je isporučena</div>
+      {% elif status == "on_the_way" %}
         <div class="track-status">Vaša porudžbina je u dostavi</div>
         {% if eta %}<div class="track-eta">Stiže okvirno do {{ eta }}</div>{% endif %}
-      {% elif status == "delivered" %}
-        <div class="track-status">Isporučeno</div>
       {% else %}
-        <div class="track-status">Primljeno</div>
+        <div class="track-status">Porudžbina je primljena</div>
       {% endif %}
+      {% if dest_city %}<div class="track-city">{{ dest_city }}</div>{% endif %}
     </div>
+
+    <ol class="stepper" aria-label="Status dostave">
+      {% for step in steps %}
+        <li class="step step--{{ step.state }}">
+          <span class="step-dot" aria-hidden="true">{% if step.state == "done" %}✓{% else %}●{% endif %}</span>
+          <span class="step-label">{{ step.label }}</span>
+        </li>
+      {% endfor %}
+    </ol>
   {% endif %}
 </div>
 {% endblock %}

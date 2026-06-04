@@ -15,6 +15,18 @@ GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 DEFAULT_TIMEOUT = 5  # секунд
 
+# Типы address_components Google в порядке предпочтения для «города».
+_CITY_TYPES = ("locality", "postal_town", "administrative_area_level_2")
+
+
+def _extract_city(components: list[dict]) -> str:
+    """Достаёт город из address_components Geocoding API (locality и fallback'и)."""
+    for ctype in _CITY_TYPES:
+        for comp in components:
+            if ctype in comp.get("types", []):
+                return comp.get("long_name", "")
+    return ""
+
 
 class GoogleMapsProvider(MapsProvider):
     """Геокодинг через Google Geocoding API (регион RS, sr-латиница)."""
@@ -57,6 +69,7 @@ class GoogleMapsProvider(MapsProvider):
             lat=location["lat"],
             lng=location["lng"],
             formatted_address=top["formatted_address"],
+            city=_extract_city(top.get("address_components") or []),
         )
 
 

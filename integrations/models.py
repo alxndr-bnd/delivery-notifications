@@ -11,6 +11,7 @@ class GeocodeCache(models.Model):
     lat = models.FloatField("широта")
     lng = models.FloatField("долгота")
     formatted_address = models.CharField("formatted адрес", max_length=512)
+    city = models.CharField("город", max_length=120, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

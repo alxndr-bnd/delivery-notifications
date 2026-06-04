@@ -57,6 +57,7 @@ def create_delivery(
         recipient_phone=phone.e164,
         phone_risk=phone.is_risky,
         dest_address=geo.formatted_address if geo else dest_address,
+        dest_city=geo.city if geo else "",
         dest_lat=geo.lat if geo else None,
         dest_lng=geo.lng if geo else None,
         description=description,
@@ -119,8 +120,12 @@ def start_delivery(delivery: Delivery, *, manual_eta: datetime | None = None) ->
     delivery.eta_source = eta_source
     delivery.save(update_fields=["status", "started_at", "eta_at", "eta_source"])
 
-    token_obj, _ = TrackingToken.objects.get_or_create(delivery=delivery)
     from django.conf import settings
+
+    token_obj, _ = TrackingToken.objects.get_or_create(
+        delivery=delivery,
+        defaults={"expires_at": now + timedelta(days=settings.TRACKING_TOKEN_TTL_DAYS)},
+    )
 
     channel = settings.INFOBIP_CHANNEL
     notification = Notification.objects.create(

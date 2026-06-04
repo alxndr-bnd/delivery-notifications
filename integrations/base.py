@@ -8,11 +8,12 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class GeocodeResult:
-    """Результат геокодинга: координаты + нормализованный (formatted) адрес."""
+    """Результат геокодинга: координаты + нормализованный (formatted) адрес + город."""
 
     lat: float
     lng: float
     formatted_address: str
+    city: str = ""
 
 
 class MapsProvider(ABC):

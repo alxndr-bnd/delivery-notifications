@@ -48,6 +48,7 @@ class Delivery(models.Model):
     # Немобильный/иностранный номер — пометка флагом риска (FR-4).
     phone_risk = models.BooleanField("флаг риска номера", default=False)
     dest_address = models.CharField("адрес назначения", max_length=300)
+    dest_city = models.CharField("город назначения", max_length=120, blank=True)
     dest_lat = models.FloatField("широта", null=True, blank=True)
     dest_lng = models.FloatField("долгота", null=True, blank=True)
     description = models.CharField("описание", max_length=300, blank=True)

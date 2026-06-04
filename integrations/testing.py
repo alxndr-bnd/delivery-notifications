@@ -13,6 +13,7 @@ class FakeMapsProvider(MapsProvider):
         lat=44.8167,
         lng=20.4592,
         formatted_address="Knez Mihailova 6, Beograd, Srbija",
+        city="Beograd",
     )
 
     def geocode(self, address: str) -> GeocodeResult | None:

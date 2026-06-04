@@ -142,3 +142,7 @@ INFOBIP_CHANNEL = env("INFOBIP_CHANNEL", default="viber")  # viber | sms
 
 # Публичный базовый URL для ссылок в сообщениях (трекинг).
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default="https://javi.serbito.rs")
+
+# Публичная страница статуса: срок жизни ссылки и rate limit (FR-20/NFR-6).
+TRACKING_TOKEN_TTL_DAYS = env.int("TRACKING_TOKEN_TTL_DAYS", default=7)
+TRACKING_RATE_LIMIT = env.int("TRACKING_RATE_LIMIT", default=60)  # запросов/мин на IP
