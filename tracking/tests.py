@@ -71,6 +71,35 @@ def test_expired_link_410(client):
     assert "istekao" in resp.content.decode()
 
 
+def test_rating_capture_and_thanks(client):
+    """AC#4: тап звезды → Rating, страница показывает «Hvala!»; AC#5 — без дублей."""
+    token = _token(Delivery.Status.ON_THE_WAY)
+    url = f"/t/{token.token}/"
+    # до оценки — видны звёзды
+    assert "Kako je prošla dostava" in client.get(url).content.decode()
+    # ставим оценку
+    resp = client.post(f"{url}oceni/", {"value": "5"})
+    assert resp.status_code == 302
+    token.delivery.refresh_from_db()
+    assert token.delivery.rating.value == 5
+    # после оценки — «Hvala!», звёзд нет
+    body = client.get(url).content.decode()
+    assert "Hvala" in body
+    assert "Kako je prošla dostava" not in body
+    # повтор не плодит дубли (обновляет)
+    client.post(f"{url}oceni/", {"value": "3"})
+    token.delivery.refresh_from_db()
+    assert token.delivery.rating.value == 3
+
+
+def test_rating_invalid_value_ignored(client):
+    from deliveries.models import Rating
+
+    token = _token(Delivery.Status.ON_THE_WAY)
+    client.post(f"/t/{token.token}/oceni/", {"value": "9"})
+    assert Rating.objects.count() == 0
+
+
 @override_settings(TRACKING_RATE_LIMIT=2)
 def test_rate_limit_429(client):
     """AC#5: сверх лимита запросов с одного IP → 429."""

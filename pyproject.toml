@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "django>=6.0,<6.1",
     "django-environ>=0.13.0",
+    "google-cloud-tasks>=2.22.0",
     "gunicorn>=26.0.0",
     "phonenumbers>=9.0.31",
     "psycopg[binary]>=3.3.4",

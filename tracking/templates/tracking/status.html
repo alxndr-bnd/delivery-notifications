@@ -28,6 +28,21 @@
         </li>
       {% endfor %}
     </ol>
+
+    {% if rating %}
+      <div class="rate-done">Hvala! Vaša ocena: {{ rating }}★</div>
+    {% elif can_rate %}
+      <div class="rate-block">
+        <div class="rate-q">Kako je prošla dostava?</div>
+        <form method="post" action="{% url 'tracking:rate' token %}" class="stars">
+          {% csrf_token %}
+          {% for n in "12345" %}
+            <button type="submit" name="value" value="{{ forloop.counter }}"
+                    class="star" aria-label="Ocena {{ forloop.counter }} od 5">★</button>
+          {% endfor %}
+        </form>
+      </div>
+    {% endif %}
   {% endif %}
 </div>
 {% endblock %}

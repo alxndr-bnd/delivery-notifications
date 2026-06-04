@@ -142,6 +142,14 @@ INFOBIP_CHANNEL = env("INFOBIP_CHANNEL", default="viber")  # viber | sms
 INFOBIP_SMS_FALLBACK = env.bool("INFOBIP_SMS_FALLBACK", default=True)  # Viber→SMS при сбое
 INFOBIP_WEBHOOK_SECRET = env("INFOBIP_WEBHOOK_SECRET", default="")  # защита вебхука receipts
 
+# Отложенные задачи (Cloud Tasks). Локально — Noop; прод — CloudTasksScheduler.
+TASK_SCHEDULER = env("TASK_SCHEDULER", default="tasks.scheduler.NoopTaskScheduler")
+TASKS_SECRET = env("TASKS_SECRET", default="")  # защита колбэков задач
+CLOUD_TASKS_PROJECT = env("CLOUD_TASKS_PROJECT", default="serbito")
+CLOUD_TASKS_LOCATION = env("CLOUD_TASKS_LOCATION", default="europe-west1")
+CLOUD_TASKS_QUEUE = env("CLOUD_TASKS_QUEUE", default="javi-rating")
+CLOUD_TASKS_SERVICE_URL = env("CLOUD_TASKS_SERVICE_URL", default="https://javi.serbito.rs")
+
 # Публичный базовый URL для ссылок в сообщениях (трекинг).
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default="https://javi.serbito.rs")
 

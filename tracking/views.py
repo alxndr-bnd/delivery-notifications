@@ -1,11 +1,12 @@
 from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from common.timewindow import format_eta
-from deliveries.models import Delivery, TrackingToken
+from deliveries.models import Delivery, Rating, TrackingToken
 
 # Порядок шагов степпера и какой статус доставки на каком шаге.
 _STEPS = [
@@ -13,6 +14,7 @@ _STEPS = [
     ("U dostavi", Delivery.Status.ON_THE_WAY),
     ("Isporučeno", Delivery.Status.DELIVERED),
 ]
+_RATEABLE = (Delivery.Status.ON_THE_WAY, Delivery.Status.DELIVERED)
 
 
 def _stepper(status: str) -> list[dict]:
@@ -37,21 +39,48 @@ def _rate_limited(request) -> bool:
     return False
 
 
+def _active_token(token: str):
+    """TrackingToken или None если истёк."""
+    token_obj = get_object_or_404(TrackingToken, token=token)
+    if token_obj.expires_at and token_obj.expires_at < timezone.now():
+        return None
+    return token_obj
+
+
 def status(request, token):
     """Публичная брендовая страница статуса (без логина). Минимум данных (NFR-3)."""
     if _rate_limited(request):
         return HttpResponse("Previše zahteva. Pokušajte kasnije.", status=429)
 
-    token_obj = get_object_or_404(TrackingToken, token=token)
-    if token_obj.expires_at and token_obj.expires_at < timezone.now():
+    token_obj = _active_token(token)
+    if token_obj is None:
         return render(request, "tracking/status.html", {"expired": True}, status=410)
 
     delivery = token_obj.delivery
+    rating = getattr(delivery, "rating", None)
     ctx = {
         "shop_name": delivery.shop.name,
         "status": delivery.status,
         "steps": _stepper(delivery.status),
         "dest_city": delivery.dest_city,
         "eta": format_eta(delivery.eta_at) if delivery.eta_at else None,
+        "token": token,
+        "rating": rating.value if rating else None,
+        "can_rate": delivery.status in _RATEABLE and rating is None,
     }
     return render(request, "tracking/status.html", ctx)
+
+
+@require_POST
+def rate(request, token):
+    """Захват оценки 1–5 с публичной страницы (без логина, без дублей)."""
+    token_obj = _active_token(token)
+    if token_obj is None:
+        return render(request, "tracking/status.html", {"expired": True}, status=410)
+    try:
+        value = int(request.POST.get("value", ""))
+    except (TypeError, ValueError):
+        value = 0
+    if 1 <= value <= 5:
+        Rating.objects.update_or_create(delivery=token_obj.delivery, defaults={"value": value})
+    return redirect("tracking:status", token=token)

@@ -25,7 +25,9 @@ class DeliveryListView(LoginRequiredMixin, TemplateView):
         shop = getattr(self.request.user, "shop", None)
         # Изоляция арендаторов: только доставки текущего магазина.
         deliveries = (
-            list(shop.deliveries.prefetch_related("notifications")) if shop is not None else []
+            list(shop.deliveries.select_related("rating").prefetch_related("notifications"))
+            if shop is not None
+            else []
         )
         # Чип статуса уведомления «в пути» (для карточки) — без N+1.
         for d in deliveries:

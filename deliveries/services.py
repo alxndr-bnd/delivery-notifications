@@ -11,9 +11,10 @@ from django.urls import reverse
 from django.utils import timezone
 
 from common.phone import PhoneResult
-from common.timewindow import format_eta
+from common.timewindow import format_eta, rating_send_time
 from integrations.providers import get_maps_provider, get_messaging_provider, get_routes_provider
 from notifications.models import Notification
+from tasks.scheduler import get_task_scheduler
 
 from .models import Delivery, Shop, TrackingToken
 
@@ -97,7 +98,7 @@ def _send_and_record(notification: Notification, delivery: Delivery, text: str):
     notification.sent_at = timezone.now() if result.ok else None
     notification.save(update_fields=["status", "channel", "provider_message_id", "sent_at"])
     if not result.ok:
-        logger.error("on_the_way send failed for delivery %s", delivery.id)
+        logger.error("notification send failed for delivery %s", delivery.id)
     return result
 
 
@@ -155,6 +156,9 @@ def start_delivery(delivery: Delivery, *, manual_eta: datetime | None = None) ->
     )
 
     result = _send_and_record(notification, delivery, _on_the_way_text(delivery, token_obj.token))
+
+    # Планируем запрос оценки на ETA+30 (прижатый к окну 08:00–22:00) — AR-4/FR-16/21.
+    get_task_scheduler().schedule_rating_request(delivery.id, rating_send_time(eta_at))
     return StartResult(ok=True, sent=result.ok, eta_at=eta_at)
 
 
@@ -178,3 +182,23 @@ def resend_on_the_way(delivery: Delivery, new_phone: PhoneResult | None = None):
     notification.status = Notification.Status.QUEUED
     notification.save(update_fields=["logical_message_id", "status"])
     return _send_and_record(notification, delivery, _on_the_way_text(delivery, token_obj.token))
+
+
+def send_rating_request(delivery: Delivery):
+    """Колбэк ETA+30: шлёт запрос оценки получателю. Идемпотентно (один rating_request)."""
+    if delivery.notifications.filter(kind=Notification.Kind.RATING_REQUEST).exists():
+        return None
+    token_obj = getattr(delivery, "tracking_token", None)
+    if token_obj is None:
+        return None
+    # TODO(Story 3.2): не слать отписанным (проверка OptOut).
+    notification = Notification.objects.create(
+        delivery=delivery,
+        kind=Notification.Kind.RATING_REQUEST,
+        status=Notification.Status.QUEUED,
+    )
+    text = (
+        f"Kako je prošla dostava iz {delivery.shop.name}? "
+        f"Ocenite: {_tracking_link(token_obj.token)}"
+    )
+    return _send_and_record(notification, delivery, text)

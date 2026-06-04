@@ -22,6 +22,7 @@ a{color:var(--brand)}
 .card-addr{font-size:13px;color:var(--muted);margin-top:2px}
 .card-meta{margin-top:8px;display:flex;align-items:center;gap:8px}
 .card-eta{font-size:13px;font-weight:700;color:var(--on-the-way)}
+.card-rating{font-size:13px;font-weight:700;color:var(--rating)}
 .card-action{margin-top:10px}
 /* status_chip — pill, цвет по семантике, статус всегда с текстом (a11y) */
 .chip{display:inline-block;border-radius:var(--radius-pill);font-size:12px;font-weight:700;padding:3px 10px}
@@ -71,3 +72,11 @@ a{color:var(--brand)}
 .step--active .step-dot,.step--done .step-dot{color:var(--brand)}
 .step--active .step-label{color:var(--ink)}
 .step--done .step-label{color:var(--ink)}
+/* rating_stars — тап = отправка, без кнопки (UX-DR5); крупный тач-таргет */
+.rate-block{text-align:center;margin-top:24px}
+.rate-q{font-size:15px;color:var(--ink);margin-bottom:10px}
+.stars{display:flex;justify-content:center;gap:6px}
+.star{background:none;border:0;cursor:pointer;font-size:34px;line-height:1;color:var(--line);
+  padding:8px;min-width:48px;min-height:48px}
+.star:hover,.star:focus{color:var(--rating)}
+.rate-done{text-align:center;margin-top:24px;font-size:16px;font-weight:700;color:var(--delivered)}

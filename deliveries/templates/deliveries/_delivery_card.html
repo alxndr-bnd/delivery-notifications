@@ -16,6 +16,7 @@
         <span class="nchip nchip-failed">Nije dostavljeno</span>
       {% endif %}
     {% endif %}
+    {% if d.rating %}<span class="card-rating">{{ d.rating.value }}★</span>{% endif %}
   </div>
 
   {% if d.status == "created" %}

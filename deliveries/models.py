@@ -1,6 +1,7 @@
 import secrets
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -65,6 +66,19 @@ class Delivery(models.Model):
 
     def __str__(self):
         return f"{self.recipient_name} — {self.dest_address}"
+
+
+class Rating(models.Model):
+    """Оценка доставки получателем (1–5), 1:1 с доставкой."""
+
+    delivery = models.OneToOneField(Delivery, on_delete=models.CASCADE, related_name="rating")
+    value = models.PositiveSmallIntegerField(
+        "оценка", validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.value}★ — delivery {self.delivery_id}"
 
 
 class TrackingToken(models.Model):
