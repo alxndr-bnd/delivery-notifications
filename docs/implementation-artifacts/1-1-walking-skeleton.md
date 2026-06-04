@@ -4,7 +4,7 @@ baseline_commit: 865aee61c9425943172c341a664750733312486c
 
 # Story 1.1: Вход магазина и кабинет доставок на проде (walking skeleton)
 
-Status: review
+Status: done
 
 <!-- Validation optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -104,7 +104,8 @@ claude-opus-4-8 (1M context)
 - Лендинг Этапа 0 сохранён: отдаётся WhiteNoise на `/` (+ /privacy.html, /robots.txt, /sitemap.xml, /og.png), Formspree-форма цела. AC#5 ✅.
 - Контейнер/деплой подготовлены (Dockerfile Django+gunicorn, .dockerignore, deploy.yaml с Cloud SQL+секретами). **AC#6 (прод-деплой) НЕ закрыт** — ждёт go: создание БД `javi`+пользователя на `serbitodb`, Secret Manager секретов, ролей runtime-SA, и тег-деплоя (трогает живой сервис).
 - Проверки зелёные: `manage.py check`, `pytest` (6 passed), `ruff check`. AC#1–#4 ✅.
-- **Прод (v0.3.0) развёрнут и проверён end-to-end:** demo@pizza.rs логинится → `/app/` 200 с empty-state. AC#1–#6 закрыты. Статус — `review`.
+- **Прод (v0.3.0) развёрнут и проверён end-to-end:** demo@pizza.rs логинится → `/app/` 200 с empty-state. AC#1–#6 закрыты.
+- **Закрытие (2026-06-04):** ревью пройдено — изоляция арендаторов скоуплена по `request.user.shop`, auth через `LoginRequiredMixin`; `ruff`/`manage.py check`/`pytest` (6 passed) зелёные. Статус — `done`.
 - Заметка по ADC: cloud-sql-proxy требовал `--gcloud-auth` (application-default creds протухли, invalid_grant).
 - Caveat изоляции: пользователь `javi` создан через gcloud → имеет роль cloudsqlsuperuser, т.е. технически не изолирован от данных serbito на общем инстансе. Для Stage 0 приемлемо; ужесточить при необходимости (отдельный инстанс или ручной REVOKE/GRANT админом).
 
