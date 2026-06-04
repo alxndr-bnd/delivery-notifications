@@ -118,6 +118,15 @@ def test_profile_post_miss_shows_hint(client):
     assert shop.origin_lat is None
 
 
+def test_profile_user_without_shop_no_500(client):
+    """Залогиненный без магазина (напр. суперюзер) не падает с 500."""
+    get_user_model().objects.create_user(email="noshop@x.rs", password="pass12345")
+    client.login(username="noshop@x.rs", password="pass12345")
+    resp = client.get("/app/prodavnica/")
+    assert resp.status_code == 200
+    assert "Nalog nije povezan sa prodavnicom" in resp.content.decode()
+
+
 @override_settings(MAPS_PROVIDER=FAKE_OK)
 def test_profile_isolation_only_own_shop(client):
     """AC#5: магазин меняет только свой Shop."""

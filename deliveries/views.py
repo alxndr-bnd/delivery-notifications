@@ -29,12 +29,16 @@ class ShopProfileView(LoginRequiredMixin, View):
     template_name = "deliveries/shop_profile.html"
 
     def get(self, request):
-        shop = request.user.shop  # изоляция: только свой магазин
+        shop = getattr(request.user, "shop", None)  # изоляция: только свой магазин
+        if shop is None:
+            return render(request, self.template_name, {"form": None, "shop": None})
         form = ShopOriginForm(initial={"address": shop.origin_address})
         return render(request, self.template_name, {"form": form, "shop": shop})
 
     def post(self, request):
-        shop = request.user.shop
+        shop = getattr(request.user, "shop", None)
+        if shop is None:
+            return render(request, self.template_name, {"form": None, "shop": None})
         form = ShopOriginForm(request.POST)
         if form.is_valid():
             if set_shop_origin(shop, form.cleaned_data["address"]):

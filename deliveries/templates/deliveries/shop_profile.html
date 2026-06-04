@@ -15,6 +15,11 @@
     {% endfor %}
   {% endif %}
 
+  {% if form is None %}
+  <div class="card">
+    <div class="muted">Nalog nije povezan sa prodavnicom.</div>
+  </div>
+  {% else %}
   <div class="card">
     <form method="post" novalidate>
       {% csrf_token %}
@@ -34,5 +39,6 @@
       <button type="submit" class="btn btn-primary">Sačuvaj</button>
     </form>
   </div>
+  {% endif %}
 </div>
 {% endblock %}

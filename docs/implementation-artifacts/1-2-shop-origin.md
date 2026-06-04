@@ -161,3 +161,4 @@ claude-opus-4-8 (1M context)
 ### Change Log
 
 - 2026-06-04: Story 1.2 реализована — origin магазина с геокодингом (Google за интерфейсом + кэш AR-6), экран «Prodavnica». 18 тестов зелёные. Прод-секрет ключа Maps открыт (ждёт go). Status → review.
+- 2026-06-04: Code-review пройдено. Фикс: `ShopProfileView` защищён от 500 при пользователе без магазина (`getattr(user, "shop", None)`, экран «Nalog nije povezan sa prodavnicom») + тест. 19 тестов зелёные. Остаётся `review` до прод-ключа Maps.
