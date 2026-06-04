@@ -4,7 +4,7 @@ baseline_commit: 211659b47ee1ef3d874a5db838e5f26c6b63e506
 
 # Story 1.3: Магазин заводит доставку и видит её в списке
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -153,3 +153,4 @@ claude-opus-4-8 (1M context)
 ### Change Log
 
 - 2026-06-04: Story 1.3 реализована — создание доставки (телефон E.164 через phonenumbers + геокод адреса), список с группами и карточками. 32 теста зелёные. Status → review.
+- 2026-06-04: Code-review пройдено (реальных багов нет). Прод-ключ Maps провижен в рамках 1.2 (геокодинг адресов получателей теперь работает в проде). Status → done.
