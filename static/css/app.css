@@ -16,22 +16,25 @@ body{
 .alpha-bar{background:var(--accent);color:#fff;text-align:center;font-size:12px;
   padding:5px 12px;line-height:1.3}
 .alpha-bar strong{letter-spacing:.08em}
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap}
+.topnav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.topnav-link{font-size:13px;color:var(--muted);text-decoration:none;padding:6px 4px}
+.btn-compact{width:auto;padding:6px 12px;font-size:13px}
 .logo{font-weight:800;font-size:18px}.logo span{color:var(--brand)}
 a{color:var(--brand)}
 .h{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 2px 10px}
-.wrap--wide{max-width:1100px}
-/* переключатель список/доска */
-.view-switch{display:flex;gap:0;margin:0 2px 10px;width:max-content}
-.view-tab{background:var(--surface);border:1px solid var(--line);color:var(--muted);
-  font-size:13px;font-weight:700;padding:6px 14px;cursor:pointer}
-.view-tab:first-child{border-radius:10px 0 0 10px}
-.view-tab:last-child{border-radius:0 10px 10px 0;border-left:0}
-.view-tab.is-active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.wrap--wide{max-width:1200px;padding-left:8px;padding-right:8px}
+/* переключатель список/доска — единый сегмент-контрол со скруглением по краям */
+.view-switch{display:inline-flex;margin:0 2px 10px;border:1px solid var(--line);
+  border-radius:10px;overflow:hidden}
+.view-tab{background:var(--surface);border:0;color:var(--muted);
+  font-size:13px;font-weight:700;padding:6px 16px;cursor:pointer}
+.view-tab + .view-tab{border-left:1px solid var(--line)}
+.view-tab.is-active{background:var(--brand);color:#fff}
 /* канбан-доска */
-.kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
-.kanban-col{flex:0 0 84vw;max-width:280px;min-width:240px;background:var(--bg);
-  border:1px solid var(--line);border-radius:14px;padding:10px}
+.kanban{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.kanban-col{flex:0 0 78vw;max-width:260px;min-width:200px;background:var(--bg);
+  border:1px solid var(--line);border-radius:14px;padding:8px}
 .kanban-col-h{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;
   letter-spacing:.03em;margin:2px 2px 10px}
 .shop-bar{font-size:12px;color:var(--muted);margin:-6px 2px 4px}

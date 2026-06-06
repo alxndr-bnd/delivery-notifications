@@ -6,6 +6,31 @@ _Создано: 2026-06-07. Статус: план (до реализации).
 
 Сделать Javi простой системой информирования покупателей о текущей доставке, в которую магазины/компании **интегрируются за минуты**: сами регистрируются, генерируют API-ключ и через API ведут весь флоу доставки (создать → отправить → статус → оценка). **UI и API консистентны** — обе поверхности вызывают одни и те же доменные сервисы.
 
+### Север-звезда (зафиксировано заказчиком, 2026-06-07)
+**Любое действие, доступное в UI, должно быть доступно и через API**, с **индустриально-стандартными действиями и статусами**.
+
+**Паритет действий UI ↔ API:**
+| UI-действие | API |
+|---|---|
+| Создать заказ | `POST /api/v1/deliveries` |
+| Označi spremno (new→ready) | `POST /api/v1/deliveries/{id}/ready` |
+| Dostava je počela (dispatch) | `POST /api/v1/deliveries/{id}/start` (alias `/dispatch`) |
+| Označi isporučeno | `POST /api/v1/deliveries/{id}/delivered` |
+| Pošalji ponovo | `POST /api/v1/deliveries/{id}/notifications/resend` |
+| Obriši / Vrati | `DELETE /api/v1/deliveries/{id}` / `POST .../restore` |
+| Статус/детали | `GET /api/v1/deliveries/{id}`, `GET /api/v1/deliveries` |
+
+**Индустриально-стандартные статусы (маппинг на внутренние):** ориентир — AfterShip 7-статусная модель.
+| Внутренний | API (industry-standard) |
+|---|---|
+| new | `pending` (info received) |
+| created (Spremno) | `ready_for_pickup` |
+| on_the_way | `out_for_delivery` |
+| delivered | `delivered` |
+| (notification failed) | sub-state `notification.failed` |
+
+API отдаёт стандартный `status` + (опц.) внутренний код. Receipt-статусы уведомления (`delivered`/`read`/`failed`) — отдельное поле `notification`.
+
 ## Что мы и что НЕ мы
 
 - **Мы:** слой уведомления о доставке своим курьером + публичная страница статуса + ETA + оценка. Магазин сам везёт; Javi считает ETA и информирует покупателя.

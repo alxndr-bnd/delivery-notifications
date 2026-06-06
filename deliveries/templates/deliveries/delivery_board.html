@@ -5,11 +5,13 @@
 <div class="wrap wrap--wide">
   <div class="topbar">
     <div class="logo">javi<span>.</span></div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <a href="{% url 'deliveries:profile' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">{% trans "Store" %}</a>
+    <div class="topnav">
+      <a href="{% url 'deliveries:deleted' %}" class="topnav-link">{% trans "Deleted" %}</a>
+      <a href="{% url 'deliveries:api_docs' %}" class="topnav-link">{% trans "API" %}</a>
+      <a href="{% url 'deliveries:profile' %}" class="btn btn-ghost btn-compact">{% trans "Store" %}</a>
       <form method="post" action="{% url 'accounts:logout' %}" style="margin:0">
         {% csrf_token %}
-        <button type="submit" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">{% trans "Sign out" %}</button>
+        <button type="submit" class="btn btn-ghost btn-compact">{% trans "Sign out" %}</button>
       </form>
     </div>
   </div>
