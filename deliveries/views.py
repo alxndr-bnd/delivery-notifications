@@ -17,6 +17,7 @@ from .models import Delivery
 from .services import (
     compute_eta,
     create_delivery,
+    eta_unavailable_reason,
     resend_on_the_way,
     set_shop_origin,
     start_delivery,
@@ -68,7 +69,7 @@ class ShopProfileView(LoginRequiredMixin, View):
         shop = getattr(request.user, "shop", None)  # изоляция: только свой магазин
         if shop is None:
             return render(request, self.template_name, {"form": None, "shop": None})
-        form = ShopOriginForm(initial={"address": shop.origin_address})
+        form = ShopOriginForm(initial={"name": shop.name, "address": shop.origin_address})
         return render(request, self.template_name, {"form": form, "shop": shop})
 
     def post(self, request):
@@ -77,12 +78,15 @@ class ShopProfileView(LoginRequiredMixin, View):
             return render(request, self.template_name, {"form": None, "shop": None})
         form = ShopOriginForm(request.POST)
         if form.is_valid():
+            # Название сохраняем всегда (независимо от геокода адреса).
+            shop.name = form.cleaned_data["name"]
+            shop.save(update_fields=["name"])
             if set_shop_origin(shop, form.cleaned_data["address"]):
-                messages.success(request, "Adresa je sačuvana.")
+                messages.success(request, "Sačuvano.")
                 return redirect("deliveries:profile")  # PRG
             messages.error(
                 request,
-                "Nismo prepoznali adresu. Proverite i pokušajte ponovo.",
+                "Naziv je sačuvan, ali adresu nismo prepoznali. Proverite i pokušajte ponovo.",
             )
         return render(request, self.template_name, {"form": form, "shop": shop})
 
@@ -186,8 +190,7 @@ class DeliveryStartView(LoginRequiredMixin, View):
         eta = compute_eta(delivery)
         computed = format_eta(eta) if eta else None
         initial = {"eta_time": computed} if computed else {}
-        if not computed:
-            messages.info(request, "Rutu nismo izračunali — unesite vreme dolaska.")
+        reason = None if computed else eta_unavailable_reason(delivery)
         return render(
             request,
             self.template_name,
@@ -195,6 +198,7 @@ class DeliveryStartView(LoginRequiredMixin, View):
                 "form": ManualEtaForm(initial=initial),
                 "delivery": delivery,
                 "computed_eta": computed,
+                "eta_reason": reason,
             },
         )
 
@@ -228,4 +232,15 @@ class DeliveryMarkDeliveredView(LoginRequiredMixin, View):
         delivery.status = Delivery.Status.DELIVERED
         delivery.save(update_fields=["status"])
         messages.success(request, "Označeno kao isporučeno.")
+        return redirect("deliveries:list")
+
+
+class DeliveryDeleteView(LoginRequiredMixin, View):
+    """Удаление доставки (с подтверждением на стороне UI). Скоуп по магазину."""
+
+    def post(self, request, pk):
+        shop = getattr(request.user, "shop", None)
+        delivery = get_object_or_404(Delivery, pk=pk, shop=shop)
+        delivery.delete()
+        messages.success(request, "Dostava je obrisana.")
         return redirect("deliveries:list")

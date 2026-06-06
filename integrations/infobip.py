@@ -28,7 +28,8 @@ class InfobipProvider(MessagingProvider):
         timeout: int = DEFAULT_TIMEOUT,
     ) -> None:
         self.base_url = (base_url or settings.INFOBIP_BASE_URL).rstrip("/")
-        self.api_key = api_key if api_key is not None else settings.INFOBIP_API_KEY
+        key = api_key if api_key is not None else settings.INFOBIP_API_KEY
+        self.api_key = key.strip()  # ключ идёт в Authorization-заголовок — \n его сломает
         self.sender = sender or settings.INFOBIP_SENDER
         self.channel = channel or settings.INFOBIP_CHANNEL
         self.sms_fallback = (

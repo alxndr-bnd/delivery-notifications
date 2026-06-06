@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     DeliveryCreateView,
+    DeliveryDeleteView,
     DeliveryListView,
     DeliveryMarkDeliveredView,
     DeliveryResendView,
@@ -17,6 +18,7 @@ urlpatterns = [
     path("dostava/nova/", DeliveryCreateView.as_view(), name="create"),
     path("klijent/", RecipientLookupView.as_view(), name="recipient_lookup"),
     path("dostava/<int:pk>/start/", DeliveryStartView.as_view(), name="start"),
+    path("dostava/<int:pk>/obrisi/", DeliveryDeleteView.as_view(), name="delete"),
     path("dostava/<int:pk>/posalji-ponovo/", DeliveryResendView.as_view(), name="resend"),
     path(
         "dostava/<int:pk>/isporuceno/",

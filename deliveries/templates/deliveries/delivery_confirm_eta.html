@@ -18,8 +18,8 @@
         <div class="eta-big">do {{ computed_eta }}</div>
       </div>
     {% else %}
-      <div class="muted" style="font-size:13px;margin-top:12px">
-        Rutu nismo izračunali — unesite vreme dolaska ručno.
+      <div class="msg msg-error" style="margin-top:12px">
+        {{ eta_reason }}
       </div>
     {% endif %}
 

@@ -17,6 +17,9 @@ body{
 .logo{font-weight:800;font-size:18px}.logo span{color:var(--brand)}
 a{color:var(--brand)}
 .h{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 2px 10px}
+.shop-bar{font-size:12px;color:var(--muted);margin:-6px 2px 4px}
+.shop-bar-name{font-weight:700;color:var(--ink)}
+.shop-bar-addr{margin-left:2px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);padding:13px 14px;margin-bottom:10px}
 .card-name{font-size:15px;font-weight:700}
 .card-addr{font-size:13px;color:var(--muted);margin-top:2px}
@@ -24,6 +27,8 @@ a{color:var(--brand)}
 .card-eta{font-size:13px;font-weight:700;color:var(--on-the-way)}
 .card-rating{font-size:13px;font-weight:700;color:var(--rating)}
 .card-optout{font-size:12px;color:var(--muted);margin-top:8px;font-style:italic}
+.card-delete{margin-top:10px;text-align:right}
+.btn-link-danger{background:none;border:0;color:var(--failed);font-size:13px;cursor:pointer;padding:4px}
 .card-action{margin-top:10px}
 .eta-preview{margin:14px 0;text-align:center}
 .eta-big{font-size:28px;font-weight:800;color:var(--brand)}

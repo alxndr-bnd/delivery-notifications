@@ -27,6 +27,13 @@
         <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
       {% endif %}
       <div class="field">
+        <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+        {{ form.name }}
+        {% if form.name.errors %}
+          <ul class="errorlist">{% for e in form.name.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+      <div class="field">
         <label for="{{ form.address.id_for_label }}">{{ form.address.label }}</label>
         {{ form.address }}
         {% if form.address.errors %}

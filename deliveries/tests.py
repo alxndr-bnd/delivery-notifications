@@ -134,7 +134,7 @@ def test_profile_post_success_redirects_and_saves(client):
     """AC#2: валидный адрес → координаты в БД + PRG-редирект."""
     _, shop = _make_shop("o4@shop.rs", "Shop O4")
     client.login(username="o4@shop.rs", password="pass12345")
-    resp = client.post("/app/prodavnica/", {"address": "Knez Mihailova 6"})
+    resp = client.post("/app/prodavnica/", {"name": "Shop", "address": "Knez Mihailova 6"})
     assert resp.status_code == 302
     assert resp["Location"] == "/app/prodavnica/"
     shop.refresh_from_db()
@@ -146,9 +146,9 @@ def test_profile_post_miss_shows_hint(client):
     """AC#3: нераспознанный адрес → подсказка, координаты не сохранены."""
     _, shop = _make_shop("o5@shop.rs", "Shop O5")
     client.login(username="o5@shop.rs", password="pass12345")
-    resp = client.post("/app/prodavnica/", {"address": "nepoznata"})
+    resp = client.post("/app/prodavnica/", {"name": "Shop", "address": "nepoznata"})
     assert resp.status_code == 200
-    assert "Nismo prepoznali adresu" in resp.content.decode()
+    assert "adresu nismo prepoznali" in resp.content.decode()
     shop.refresh_from_db()
     assert shop.origin_lat is None
 
@@ -168,7 +168,7 @@ def test_profile_isolation_only_own_shop(client):
     _, shop_a = _make_shop("ia@shop.rs", "Iso A")
     _, shop_b = _make_shop("ib@shop.rs", "Iso B")
     client.login(username="ia@shop.rs", password="pass12345")
-    client.post("/app/prodavnica/", {"address": "Knez Mihailova 6"})
+    client.post("/app/prodavnica/", {"name": "Shop", "address": "Knez Mihailova 6"})
     shop_a.refresh_from_db()
     shop_b.refresh_from_db()
     assert shop_a.origin_lat == pytest.approx(44.8167)
@@ -484,6 +484,28 @@ def test_mark_delivered_other_shop_404(client):
     client.login(username="a2@shop.rs", password="pass12345")
     resp = client.post(f"/app/dostava/{victim.pk}/isporuceno/")
     assert resp.status_code == 404
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_delete_delivery(client):
+    shop = _make_shop_with_origin("del@shop.rs", "Del Shop")
+    delivery, _ = create_delivery(
+        shop, recipient_name="Ana", phone=normalize_phone("064 123 4567"), dest_address="adr"
+    )
+    client.login(username="del@shop.rs", password="pass12345")
+    resp = client.post(f"/app/dostava/{delivery.pk}/obrisi/")
+    assert resp.status_code == 302
+    assert not Delivery.objects.filter(pk=delivery.pk).exists()
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_delete_other_shop_404(client):
+    _make_shop_with_origin("da2@shop.rs", "DA2")
+    _, victim = _geocoded_delivery("dv2@shop.rs", "DV2")
+    client.login(username="da2@shop.rs", password="pass12345")
+    resp = client.post(f"/app/dostava/{victim.pk}/obrisi/")
+    assert resp.status_code == 404
+    assert Delivery.objects.filter(pk=victim.pk).exists()
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK)

@@ -48,4 +48,10 @@
       <button type="submit" class="btn btn-ghost">Označi isporučeno</button>
     </form>
   {% endif %}
+
+  <form method="post" action="{% url 'deliveries:delete' d.pk %}" class="card-delete"
+        onsubmit="return confirm('Obrisati ovu dostavu?');">
+    {% csrf_token %}
+    <button type="submit" class="btn-link-danger">Obriši dostavu</button>
+  </form>
 </div>

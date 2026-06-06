@@ -4,8 +4,9 @@ from common.phone import InvalidPhone, normalize_phone
 
 
 class ShopOriginForm(forms.Form):
-    """Адрес магазина (origin). Геокодинг — в сервисе после валидации формы."""
+    """Название + адрес магазина (origin). Геокодинг адреса — в сервисе после валидации."""
 
+    name = forms.CharField(label="Naziv prodavnice", max_length=200)
     address = forms.CharField(
         label="Adresa prodavnice",
         max_length=300,

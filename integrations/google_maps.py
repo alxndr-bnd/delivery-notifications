@@ -32,7 +32,8 @@ class GoogleMapsProvider(MapsProvider):
     """Геокодинг через Google Geocoding API (регион RS, sr-латиница)."""
 
     def __init__(self, api_key: str | None = None, timeout: int = DEFAULT_TIMEOUT) -> None:
-        self.api_key = api_key if api_key is not None else settings.GOOGLE_MAPS_API_KEY
+        key = api_key if api_key is not None else settings.GOOGLE_MAPS_API_KEY
+        self.api_key = key.strip()  # секрет может прийти с \n — header-API это ломает
         self.timeout = timeout
 
     def geocode(self, address: str) -> GeocodeResult | None:
@@ -77,7 +78,8 @@ class GoogleRoutesProvider(RoutesProvider):
     """ETA через Google Routes API (computeRoutes, TRAFFIC_AWARE)."""
 
     def __init__(self, api_key: str | None = None, timeout: int = DEFAULT_TIMEOUT) -> None:
-        self.api_key = api_key if api_key is not None else settings.GOOGLE_MAPS_API_KEY
+        key = api_key if api_key is not None else settings.GOOGLE_MAPS_API_KEY
+        self.api_key = key.strip()  # секрет может прийти с \n — header-API (Routes) это ломает
         self.timeout = timeout
 
     def route_duration_seconds(

@@ -80,15 +80,30 @@ def compute_eta(delivery: Delivery) -> datetime | None:
         delivery.dest_lng,
     )
     if not have_coords:
+        logger.warning(
+            "ETA: нет координат для доставки %s (origin=%s,%s dest=%s,%s)",
+            delivery.id, shop.origin_lat, shop.origin_lng, delivery.dest_lat, delivery.dest_lng,
+        )
         return None
     seconds = get_routes_provider().route_duration_seconds(
         (shop.origin_lat, shop.origin_lng), (delivery.dest_lat, delivery.dest_lng)
     )
     if seconds is None:
+        logger.warning("ETA: Routes вернул None для доставки %s", delivery.id)
         return None
     return timezone.now() + timedelta(seconds=seconds) + timedelta(
         minutes=settings.ETA_BUFFER_MINUTES
     )
+
+
+def eta_unavailable_reason(delivery: Delivery) -> str:
+    """Человеко-понятная причина, почему ETA не рассчитан (для UI)."""
+    shop = delivery.shop
+    if shop.origin_lat is None or shop.origin_lng is None:
+        return "Adresa prodavnice nije geokodirana — otvorite „Prodavnica“ i sačuvajte adresu."
+    if delivery.dest_lat is None or delivery.dest_lng is None:
+        return "Adresu dostave nismo prepoznali — proverite adresu primaoca."
+    return "Mapa trenutno ne može da izračuna rutu — unesite vreme ručno."
 
 
 @dataclass
