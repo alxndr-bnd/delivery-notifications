@@ -13,6 +13,9 @@ body{
   -webkit-text-size-adjust:100%;
 }
 .wrap{max-width:560px;margin:0 auto;padding:16px 14px 96px;min-height:100vh}
+.alpha-bar{background:var(--accent);color:#fff;text-align:center;font-size:12px;
+  padding:5px 12px;line-height:1.3}
+.alpha-bar strong{letter-spacing:.08em}
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .logo{font-weight:800;font-size:18px}.logo span{color:var(--brand)}
 a{color:var(--brand)}
