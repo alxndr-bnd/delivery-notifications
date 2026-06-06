@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime
 
 from django.contrib import messages
@@ -22,6 +23,23 @@ from .services import (
     set_shop_origin,
     start_delivery,
 )
+
+
+def _deliveries_signature(shop) -> str:
+    """Сигнатура активных доставок магазина: меняется при новом/удалённом заказе и смене статуса."""
+    if shop is None:
+        return ""
+    rows = shop.deliveries.filter(deleted_at__isnull=True).values_list("id", "status", "deleted_at")
+    raw = ";".join(f"{i}:{s}" for i, s, _ in rows)
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+class DeliveryFeedView(LoginRequiredMixin, View):
+    """Лёгкий поллинг: возвращает сигнатуру списка для авто-обновления без перезагрузки."""
+
+    def get(self, request):
+        shop = getattr(request.user, "shop", None)
+        return JsonResponse({"sig": _deliveries_signature(shop)})
 
 
 class DeliveryListView(LoginRequiredMixin, TemplateView):
@@ -62,6 +80,7 @@ class DeliveryListView(LoginRequiredMixin, TemplateView):
         ctx["spremno"] = [d for d in deliveries if d.status == Delivery.Status.CREATED]
         ctx["zavrseno"] = [d for d in deliveries if d.status == Delivery.Status.DELIVERED]
         ctx["completed_expanded"] = bool(shop and shop.completed_expanded)
+        ctx["feed_sig"] = _deliveries_signature(shop)
         return ctx
 
 

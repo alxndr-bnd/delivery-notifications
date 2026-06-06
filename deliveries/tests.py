@@ -518,6 +518,19 @@ def test_restore_delivery(client):
     assert delivery.pk in [d.pk for d in client.get("/app/").context["deliveries"]]
 
 
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_feed_signature_changes_on_new_order(client):
+    """Авто-обновление: сигнатура меняется при появлении нового заказа."""
+    shop = _make_shop_with_origin("fd@shop.rs", "Feed Shop")
+    client.login(username="fd@shop.rs", password="pass12345")
+    sig1 = client.get("/app/feed/").json()["sig"]
+    create_delivery(
+        shop, recipient_name="Ana", phone=normalize_phone("064 123 4567"), dest_address="adr"
+    )
+    sig2 = client.get("/app/feed/").json()["sig"]
+    assert sig1 != sig2
+
+
 def test_toggle_completed_saves_state(client):
     shop = _make_shop_with_origin("tg@shop.rs", "Toggle Shop")
     client.login(username="tg@shop.rs", password="pass12345")

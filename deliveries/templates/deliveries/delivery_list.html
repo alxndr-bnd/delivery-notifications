@@ -61,6 +61,24 @@
 </div>
 
 <script>
+// Авто-обновление: поллим сигнатуру списка; при изменении (новый заказ через API,
+// смена статуса, удаление) — обновляем страницу, не мешая вводу.
+(function () {
+  var current = "{{ feed_sig }}";
+  var feedUrl = "{% url 'deliveries:feed' %}";
+  function isTyping() {
+    var el = document.activeElement;
+    return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA");
+  }
+  setInterval(function () {
+    if (document.hidden || isTyping()) return;
+    fetch(feedUrl, {headers: {"X-Requested-With": "fetch"}})
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.sig && d.sig !== current) location.reload(); })
+      .catch(function () {});
+  }, 15000);
+})();
+
 (function () {
   var sec = document.getElementById("completed-section");
   if (!sec) return;
