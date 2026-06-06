@@ -20,5 +20,9 @@
     </div>
     <button type="submit" class="btn btn-primary">{% trans "Sign in" %}</button>
   </form>
+  <p class="auth-alt">
+    {% trans "No account yet?" %}
+    <a href="{% url 'accounts:register' %}">{% trans "Create an account" %}</a>
+  </p>
 </div>
 {% endblock %}

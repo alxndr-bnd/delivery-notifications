@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Create an account" %} · Javi{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="logo" style="margin-bottom:18px">javi<span>.</span></div>
+  <h1>{% trans "Create an account" %}</h1>
+  <form method="post" action="{% url 'accounts:register' %}">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% endif %}
+    <div class="field">
+      <label for="{{ form.email.id_for_label }}">{% trans "Email" %}</label>
+      {{ form.email }}
+      {% for e in form.email.errors %}<div class="errorlist">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="{{ form.store_name.id_for_label }}">{% trans "Store name" %}</label>
+      {{ form.store_name }}
+      {% for e in form.store_name.errors %}<div class="errorlist">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="{{ form.password1.id_for_label }}">{% trans "Password" %}</label>
+      {{ form.password1 }}
+      {% for e in form.password1.errors %}<div class="errorlist">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="{{ form.password2.id_for_label }}">{% trans "Confirm password" %}</label>
+      {{ form.password2 }}
+      {% for e in form.password2.errors %}<div class="errorlist">{{ e }}</div>{% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary">{% trans "Create an account" %}</button>
+  </form>
+  <p class="auth-alt">
+    {% trans "Already have an account?" %}
+    <a href="{% url 'accounts:login' %}">{% trans "Sign in" %}</a>
+  </p>
+</div>
+{% endblock %}
