@@ -18,12 +18,21 @@ _RATEABLE = (Delivery.Status.ON_THE_WAY, Delivery.Status.DELIVERED)
 
 
 def _stepper(status: str) -> list[dict]:
-    """Список шагов с состояниями done/active/future для серверного рендера."""
+    """Список шагов с состояниями done/active/future для серверного рендера.
+
+    Финальный шаг (Isporučeno) в терминальном статусе — done (✓), а не active (●).
+    """
     order = [s for _, s in _STEPS]
     current = order.index(status) if status in order else 0
+    is_terminal = status == Delivery.Status.DELIVERED
     steps = []
     for idx, (label, _s) in enumerate(_STEPS):
-        state = "done" if idx < current else "active" if idx == current else "future"
+        if idx < current:
+            state = "done"
+        elif idx == current:
+            state = "done" if is_terminal else "active"
+        else:
+            state = "future"
         steps.append({"label": label, "state": state})
     return steps
 

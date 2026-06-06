@@ -56,6 +56,15 @@ def test_delivered_step(client):
     token = _token(Delivery.Status.DELIVERED, eta_minutes=0)
     body = client.get(f"/t/{token.token}/").content.decode()
     assert "isporučena" in body
+    # терминальный статус: все шаги завершены (✓), нет «текущего» (●)
+    assert "step--active" not in body
+    assert body.count("step--done") == 3
+
+
+def test_on_the_way_step_has_active(client):
+    token = _token(Delivery.Status.ON_THE_WAY)
+    body = client.get(f"/t/{token.token}/").content.decode()
+    assert "step--active" in body  # U dostavi — текущий
 
 
 def test_unknown_token_404(client):
