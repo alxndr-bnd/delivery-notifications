@@ -153,6 +153,9 @@ CLOUD_TASKS_SERVICE_URL = env("CLOUD_TASKS_SERVICE_URL", default="https://javi.s
 # Публичный базовый URL для ссылок в сообщениях (трекинг).
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default="https://javi.serbito.rs")
 
+# Запас времени к расчётному ETA (минуты): now + время в пути + запас.
+ETA_BUFFER_MINUTES = env.int("ETA_BUFFER_MINUTES", default=10)
+
 # Публичная страница статуса: срок жизни ссылки и rate limit (FR-20/NFR-6).
 TRACKING_TOKEN_TTL_DAYS = env.int("TRACKING_TOKEN_TTL_DAYS", default=7)
 TRACKING_RATE_LIMIT = env.int("TRACKING_RATE_LIMIT", default=60)  # запросов/мин на IP

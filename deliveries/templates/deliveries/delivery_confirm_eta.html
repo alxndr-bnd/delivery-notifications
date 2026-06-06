@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Potvrda dostave · Javi{% endblock %}
+{% block body %}
+<div class="wrap">
+  <div class="topbar">
+    <div class="logo">javi<span>.</span></div>
+    <a href="{% url 'deliveries:list' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">← Dostave</a>
+  </div>
+
+  <div class="h">Potvrdite dostavu</div>
+  <div class="card">
+    <div class="card-name">{{ delivery.recipient_name }}</div>
+    <div class="card-addr">{{ delivery.dest_address }}</div>
+
+    {% if computed_eta %}
+      <div class="eta-preview">
+        <div class="muted" style="font-size:13px">Procenjeno vreme dolaska</div>
+        <div class="eta-big">do {{ computed_eta }}</div>
+      </div>
+    {% else %}
+      <div class="muted" style="font-size:13px;margin-top:12px">
+        Rutu nismo izračunali — unesite vreme dolaska ručno.
+      </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'deliveries:start' delivery.pk %}" novalidate>
+      {% csrf_token %}
+      <div class="field">
+        <label for="{{ form.eta_time.id_for_label }}">{{ form.eta_time.label }}</label>
+        {{ form.eta_time }}
+        {% if form.eta_time.errors %}
+          <ul class="errorlist">{% for e in form.eta_time.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+        <div class="muted" style="font-size:13px;margin-top:6px">Možete ispraviti vreme pre slanja.</div>
+      </div>
+      <button type="submit" class="btn btn-primary">Potvrdi i obavesti kupca</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

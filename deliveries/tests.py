@@ -378,15 +378,47 @@ def test_start_view_cannot_start_other_shop_delivery(client):
 
 
 @override_settings(ROUTES_PROVIDER=ROUTES_OK, MESSAGING_PROVIDER=MSG_OK)
-def test_start_view_success_moves_to_u_dostavi(client):
-    """AC#6: успешный старт → карточка в группе U dostavi."""
+def test_start_view_preview_shows_computed_eta(client):
+    """Шаг 1: «Dostava je počela» показывает рассчитанное время, ещё НЕ шлёт."""
+    FakeMessagingProvider.sent = []
+    _, delivery = _geocoded_delivery("pv@shop.rs", "Preview Shop")
+    client.login(username="pv@shop.rs", password="pass12345")
+    resp = client.post(f"/app/dostava/{delivery.pk}/start/")
+    assert resp.status_code == 200
+    assert "Procenjeno vreme dolaska" in resp.content.decode()
+    delivery.refresh_from_db()
+    assert delivery.status == Delivery.Status.CREATED  # ещё не стартовала
+    assert len(FakeMessagingProvider.sent) == 0
+
+
+@override_settings(ROUTES_PROVIDER=ROUTES_OK, MESSAGING_PROVIDER=MSG_OK)
+def test_start_view_confirm_moves_to_u_dostavi(client):
+    """Шаг 2: подтверждение с временем → старт, карточка в U dostavi, сообщение ушло."""
     FakeMessagingProvider.sent = []
     shop, delivery = _geocoded_delivery("ok@shop.rs", "OK Shop")
     client.login(username="ok@shop.rs", password="pass12345")
-    resp = client.post(f"/app/dostava/{delivery.pk}/start/", follow=True)
+    resp = client.post(f"/app/dostava/{delivery.pk}/start/", {"eta_time": "16:00"}, follow=True)
     assert resp.status_code == 200
     assert resp.context["u_dostavi"][0].pk == delivery.pk
     assert resp.context["spremno"] == []
+    assert len(FakeMessagingProvider.sent) == 1
+
+
+@override_settings(ROUTES_PROVIDER=ROUTES_OK)
+def test_compute_eta_includes_buffer(settings):
+    """ETA = now + время в пути (фейк 900с) + запас (минуты)."""
+    from datetime import timedelta
+
+    from deliveries.services import compute_eta
+
+    settings.ETA_BUFFER_MINUTES = 10
+    _, delivery = _geocoded_delivery("eb@shop.rs", "Buffer Shop")
+    before = timezone.now()
+    eta = compute_eta(delivery)
+    # 900с в пути + 10 мин запаса = 1500с; с запасом на время выполнения теста.
+    assert eta is not None
+    assert eta >= before + timedelta(seconds=1500)
+    assert eta <= before + timedelta(seconds=1500 + 30)
 
 
 # --- Story 2.4: статус уведомления + переотправка + ручная отметка ---

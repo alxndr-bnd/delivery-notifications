@@ -14,7 +14,13 @@ from notifications.models import Notification, OptOut
 
 from .forms import DeliveryForm, ManualEtaForm, RecipientPhoneForm, ShopOriginForm
 from .models import Delivery
-from .services import create_delivery, resend_on_the_way, set_shop_origin, start_delivery
+from .services import (
+    compute_eta,
+    create_delivery,
+    resend_on_the_way,
+    set_shop_origin,
+    start_delivery,
+)
 
 
 class DeliveryListView(LoginRequiredMixin, TemplateView):
@@ -147,15 +153,15 @@ class RecipientLookupView(LoginRequiredMixin, View):
 
 
 class DeliveryStartView(LoginRequiredMixin, View):
-    """«Dostava je počela»: расчёт ETA + уведомление получателю. При сбое — ручной ETA."""
+    """«Dostava je počela»: 1) показать рассчитанное время → 2) подтверждение шлёт уведомление."""
 
-    template_name = "deliveries/delivery_manual_eta.html"
+    template_name = "deliveries/delivery_confirm_eta.html"
 
     def post(self, request, pk):
         shop = getattr(request.user, "shop", None)
         delivery = get_object_or_404(Delivery, pk=pk, shop=shop)  # изоляция
 
-        # Ветка ручного ETA (повторный POST с временем).
+        # Шаг 2: подтверждение (с временем) → фиксируем статус + шлём.
         if "eta_time" in request.POST:
             form = ManualEtaForm(request.POST)
             if not form.is_valid():
@@ -163,21 +169,34 @@ class DeliveryStartView(LoginRequiredMixin, View):
             today = timezone.now().astimezone(BELGRADE).date()
             manual_eta = datetime.combine(today, form.cleaned_data["eta_time"], tzinfo=BELGRADE)
             result = start_delivery(delivery, manual_eta=manual_eta)
-        else:
-            result = start_delivery(delivery)
-            if result.needs_manual_eta:
-                messages.info(request, "Ruta nije dostupna — unesite vreme dolaska ručno.")
-                return render(
-                    request, self.template_name, {"form": ManualEtaForm(), "delivery": delivery}
-                )
+            if result.already:
+                messages.info(request, "Dostava je već u toku.")
+            elif result.ok:
+                messages.success(request, f"Kupac obavešten · stiže do {format_eta(result.eta_at)}")
+                if not result.sent:
+                    messages.warning(request, "Poruka nije poslata — pokušajte ponovo kasnije.")
+            return redirect("deliveries:list")
 
-        if result.already:
+        # Шаг 1: уже стартовала? — не дублируем.
+        if delivery.status == Delivery.Status.ON_THE_WAY:
             messages.info(request, "Dostava je već u toku.")
-        elif result.ok:
-            messages.success(request, f"Kupac obavešten · stiže do {format_eta(result.eta_at)}")
-            if not result.sent:
-                messages.warning(request, "Poruka nije poslata — pokušajte ponovo kasnije.")
-        return redirect("deliveries:list")
+            return redirect("deliveries:list")
+
+        # Шаг 1: считаем ETA (now + время в пути + запас) и показываем экран подтверждения.
+        eta = compute_eta(delivery)
+        computed = format_eta(eta) if eta else None
+        initial = {"eta_time": computed} if computed else {}
+        if not computed:
+            messages.info(request, "Rutu nismo izračunali — unesite vreme dolaska.")
+        return render(
+            request,
+            self.template_name,
+            {
+                "form": ManualEtaForm(initial=initial),
+                "delivery": delivery,
+                "computed_eta": computed,
+            },
+        )
 
 
 class DeliveryResendView(LoginRequiredMixin, View):

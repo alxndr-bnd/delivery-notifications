@@ -68,6 +68,29 @@ def create_delivery(
     return delivery, geo is not None
 
 
+def compute_eta(delivery: Delivery) -> datetime | None:
+    """ETA = сейчас + время в пути (origin→получатель) + запас. None если маршрут недоступен."""
+    from django.conf import settings
+
+    shop = delivery.shop
+    have_coords = None not in (
+        shop.origin_lat,
+        shop.origin_lng,
+        delivery.dest_lat,
+        delivery.dest_lng,
+    )
+    if not have_coords:
+        return None
+    seconds = get_routes_provider().route_duration_seconds(
+        (shop.origin_lat, shop.origin_lng), (delivery.dest_lat, delivery.dest_lng)
+    )
+    if seconds is None:
+        return None
+    return timezone.now() + timedelta(seconds=seconds) + timedelta(
+        minutes=settings.ETA_BUFFER_MINUTES
+    )
+
+
 @dataclass
 class StartResult:
     ok: bool = False
@@ -119,23 +142,10 @@ def start_delivery(delivery: Delivery, *, manual_eta: datetime | None = None) ->
     if manual_eta is not None:
         eta_at, eta_source = manual_eta, "manual"
     else:
-        shop = delivery.shop
-        have_coords = None not in (
-            shop.origin_lat,
-            shop.origin_lng,
-            delivery.dest_lat,
-            delivery.dest_lng,
-        )
-        seconds = (
-            get_routes_provider().route_duration_seconds(
-                (shop.origin_lat, shop.origin_lng), (delivery.dest_lat, delivery.dest_lng)
-            )
-            if have_coords
-            else None
-        )
-        if seconds is None:
+        eta_at = compute_eta(delivery)
+        if eta_at is None:
             return StartResult(needs_manual_eta=True)
-        eta_at, eta_source = now + timedelta(seconds=seconds), "auto"
+        eta_source = "auto"
 
     delivery.status = Delivery.Status.ON_THE_WAY
     delivery.started_at = now

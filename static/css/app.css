@@ -25,6 +25,8 @@ a{color:var(--brand)}
 .card-rating{font-size:13px;font-weight:700;color:var(--rating)}
 .card-optout{font-size:12px;color:var(--muted);margin-top:8px;font-style:italic}
 .card-action{margin-top:10px}
+.eta-preview{margin:14px 0;text-align:center}
+.eta-big{font-size:28px;font-weight:800;color:var(--brand)}
 /* status_chip — pill, цвет по семантике, статус всегда с текстом (a11y) */
 .chip{display:inline-block;border-radius:var(--radius-pill);font-size:12px;font-weight:700;padding:3px 10px}
 .chip-created{background:#eef2fb;color:#3a4a73}

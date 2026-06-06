@@ -23,8 +23,7 @@
   {% endif %}
 
   {% if d.status == "created" %}
-    <form method="post" action="{% url 'deliveries:start' d.pk %}" class="card-action"
-          onsubmit="return confirm('Poslati obaveštenje kupcu da je dostava počela?');">
+    <form method="post" action="{% url 'deliveries:start' d.pk %}" class="card-action">
       {% csrf_token %}
       <button type="submit" class="btn btn-primary">Dostava je počela</button>
     </form>
