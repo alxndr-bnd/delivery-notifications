@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext
 
 from common.phone import PhoneResult
 from common.timewindow import format_eta, rating_send_time
@@ -100,10 +101,10 @@ def eta_unavailable_reason(delivery: Delivery) -> str:
     """Человеко-понятная причина, почему ETA не рассчитан (для UI)."""
     shop = delivery.shop
     if shop.origin_lat is None or shop.origin_lng is None:
-        return "Adresa prodavnice nije geokodirana — otvorite „Prodavnica“ i sačuvajte adresu."
+        return gettext("Store address is not geocoded — open “Store” and save the address.")
     if delivery.dest_lat is None or delivery.dest_lng is None:
-        return "Adresu dostave nismo prepoznali — proverite adresu primaoca."
-    return "Mapa trenutno ne može da izračuna rutu — unesite vreme ručno."
+        return gettext("We could not recognize the delivery address — check the recipient address.")
+    return gettext("The map can't compute a route right now — enter the time manually.")
 
 
 @dataclass
@@ -122,10 +123,14 @@ def _tracking_link(token: str) -> str:
 
 
 def _on_the_way_text(delivery: Delivery, token: str) -> str:
-    return (
-        f"Vaša porudžbina iz {delivery.shop.name} je u dostavi. "
-        f"Stiže okvirno do {format_eta(delivery.eta_at)}. Pratite: {_tracking_link(token)}"
-    )
+    return gettext(
+        "Your order from %(shop)s is on its way. "
+        "Arriving approximately by %(time)s. Track: %(link)s"
+    ) % {
+        "shop": delivery.shop.name,
+        "time": format_eta(delivery.eta_at),
+        "link": _tracking_link(token),
+    }
 
 
 def _send_and_record(notification: Notification, delivery: Delivery, text: str):
@@ -228,8 +233,8 @@ def send_rating_request(delivery: Delivery):
         kind=Notification.Kind.RATING_REQUEST,
         status=Notification.Status.QUEUED,
     )
-    text = (
-        f"Kako je prošla dostava iz {delivery.shop.name}? "
-        f"Ocenite: {_tracking_link(token_obj.token)}"
-    )
+    text = gettext("How did the delivery from %(shop)s go? Rate it: %(link)s") % {
+        "shop": delivery.shop.name,
+        "link": _tracking_link(token_obj.token),
+    }
     return _send_and_record(notification, delivery, text)

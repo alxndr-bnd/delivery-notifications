@@ -66,8 +66,8 @@ def test_shop_sees_empty_cabinet(client):
     resp = client.get("/app/")
     assert resp.status_code == 200
     body = resp.content.decode()
-    assert "Nema dostava" in body
-    assert "Nova dostava" in body
+    assert "No deliveries" in body
+    assert "New delivery" in body
 
 
 def test_tenant_isolation(client):
@@ -148,7 +148,7 @@ def test_profile_post_miss_shows_hint(client):
     client.login(username="o5@shop.rs", password="pass12345")
     resp = client.post("/app/prodavnica/", {"name": "Shop", "address": "nepoznata"})
     assert resp.status_code == 200
-    assert "adresu nismo prepoznali" in resp.content.decode()
+    assert "could not recognize the address" in resp.content.decode()
     shop.refresh_from_db()
     assert shop.origin_lat is None
 
@@ -159,7 +159,7 @@ def test_profile_user_without_shop_no_500(client):
     client.login(username="noshop@x.rs", password="pass12345")
     resp = client.get("/app/prodavnica/")
     assert resp.status_code == 200
-    assert "Nalog nije povezan sa prodavnicom" in resp.content.decode()
+    assert "Account is not linked to a store" in resp.content.decode()
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK)
@@ -250,7 +250,7 @@ def test_create_view_success_appears_in_novo(client):
 
     list_resp = client.get("/app/")
     assert list_resp.context["novo"][0].recipient_name == "Ana"
-    assert "Novo" in list_resp.content.decode()
+    assert "New" in list_resp.content.decode()
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK)
@@ -263,7 +263,7 @@ def test_create_view_invalid_phone_blocks(client):
         {"recipient_name": "Ana", "recipient_phone": "abc", "dest_address": "Neka adresa"},
     )
     assert resp.status_code == 200
-    assert "Neispravan broj" in resp.content.decode()
+    assert "Invalid number" in resp.content.decode()
     assert shop.deliveries.count() == 0
 
 
@@ -303,7 +303,7 @@ def test_start_delivery_computes_eta_and_sends():
     assert len(FakeMessagingProvider.sent) == 1
     to, text = FakeMessagingProvider.sent[0]
     assert to == "+381641234567"
-    assert "Stiže okvirno do" in text and "/t/" in text
+    assert "Arriving approximately by" in text and "/t/" in text
 
 
 @override_settings(ROUTES_PROVIDER=ROUTES_OK, MESSAGING_PROVIDER=MSG_OK)
@@ -385,7 +385,7 @@ def test_start_view_preview_shows_computed_eta(client):
     client.login(username="pv@shop.rs", password="pass12345")
     resp = client.post(f"/app/dostava/{delivery.pk}/start/")
     assert resp.status_code == 200
-    assert "Procenjeno vreme dolaska" in resp.content.decode()
+    assert "Estimated arrival time" in resp.content.decode()
     delivery.refresh_from_db()
     assert delivery.status == Delivery.Status.NEW  # ещё не стартовала
     assert len(FakeMessagingProvider.sent) == 0
@@ -631,4 +631,4 @@ def test_cabinet_shows_opted_out(client):
     opt_out(delivery.recipient_phone)
     client.login(username="oo@shop.rs", password="pass12345")
     body = client.get("/app/").content.decode()
-    assert "otkazao obaveštenja" in body
+    assert "opted out of notifications" in body

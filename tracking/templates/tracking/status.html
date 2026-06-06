@@ -1,26 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Status dostave · Javi{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Delivery status" %} · Javi{% endblock %}
 {% block body %}
 <div class="track">
   {% if expired %}
     <div class="track-card track-card--plain">
-      <div class="muted">Link je istekao.</div>
+      <div class="muted">{% trans "Link has expired." %}</div>
     </div>
   {% else %}
     <div class="track-card">
       <div class="track-shop">{{ shop_name }}</div>
       {% if status == "delivered" %}
-        <div class="track-status">Porudžbina je isporučena</div>
+        <div class="track-status">{% trans "Your order has been delivered" %}</div>
       {% elif status == "on_the_way" %}
-        <div class="track-status">Vaša porudžbina je u dostavi</div>
-        {% if eta %}<div class="track-eta">Stiže okvirno do {{ eta }}</div>{% endif %}
+        <div class="track-status">{% trans "Your order is on its way" %}</div>
+        {% if eta %}<div class="track-eta">{% blocktrans %}Arriving approximately by {{ eta }}{% endblocktrans %}</div>{% endif %}
       {% else %}
-        <div class="track-status">Porudžbina je primljena</div>
+        <div class="track-status">{% trans "Your order has been received" %}</div>
       {% endif %}
       {% if dest_city %}<div class="track-city">{{ dest_city }}</div>{% endif %}
     </div>
 
-    <ol class="stepper" aria-label="Status dostave">
+    <ol class="stepper" aria-label="{% trans 'Delivery status' %}">
       {% for step in steps %}
         <li class="step step--{{ step.state }}">
           <span class="step-dot" aria-hidden="true">{% if step.state == "done" %}✓{% else %}●{% endif %}</span>
@@ -32,30 +33,28 @@
     {% if status == "on_the_way" %}
       <form method="post" action="{% url 'tracking:mark_received' token %}" class="confirm-block">
         {% csrf_token %}
-        <button type="submit" class="btn btn-primary">Primio sam porudžbinu</button>
+        <button type="submit" class="btn btn-primary">{% trans "I received the order" %}</button>
       </form>
     {% endif %}
 
     {% if rating %}
-      <div class="rate-done">Hvala na oceni! Vaša ocena: {{ rating }}★</div>
+      <div class="rate-done">{% blocktrans %}Thank you for your rating! Your rating: {{ rating }}★{% endblocktrans %}</div>
     {% elif can_rate %}
       <div class="rate-block">
-        <div class="rate-q">Kako je prošla dostava?</div>
-        <div class="rate-hint">Dodirnite zvezdice da ocenite (1 = loše, 5 = odlično).</div>
-        {% comment %}Звёзды в обратном порядке (5→1) + CSS row-reverse: hover/focus
-        подсвечивает выбранную и все левее (нарастающе). Работает и без JS (тап = отправка).{% endcomment %}
+        <div class="rate-q">{% trans "How did the delivery go?" %}</div>
+        <div class="rate-hint">{% trans "Tap the stars to rate (1 = poor, 5 = excellent)." %}</div>
         <form method="post" action="{% url 'tracking:rate' token %}" class="stars">
           {% csrf_token %}
           {% for n in "54321" %}
             <button type="submit" name="value" value="{{ n }}"
-                    class="star" aria-label="Ocena {{ n }} od 5">★</button>
+                    class="star" aria-label="{% blocktrans %}Rating {{ n }} of 5{% endblocktrans %}">★</button>
           {% endfor %}
         </form>
       </div>
     {% endif %}
 
     <div class="track-unsub">
-      <a href="{% url 'tracking:unsubscribe' token %}">Odjavi se sa obaveštenja</a>
+      <a href="{% url 'tracking:unsubscribe' token %}">{% trans "Unsubscribe from notifications" %}</a>
     </div>
   {% endif %}
 </div>

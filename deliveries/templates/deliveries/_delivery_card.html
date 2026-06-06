@@ -1,64 +1,64 @@
-{% comment %}Карточка доставки: имя+адрес, чип статуса доставки и уведомления, действия.{% endcomment %}
+{% load i18n %}
 <div class="card">
   <div class="card-name">{{ d.recipient_name }}</div>
   <div class="card-addr">{{ d.dest_address }}</div>
   <div class="card-meta">
     <span class="chip chip-{{ d.status }}">{{ d.get_status_display }}</span>
     {% if d.status == "on_the_way" and d.eta_at %}
-      <span class="card-eta">do {{ d.eta_at|date:"H:i" }}</span>
+      <span class="card-eta">{% trans "by" %} {{ d.eta_at|date:"H:i" }}</span>
     {% endif %}
     {% if d.on_the_way_notif %}
       {% if d.on_the_way_notif.status == "read" %}
-        <span class="nchip nchip-read">Pročitano</span>
+        <span class="nchip nchip-read">{% trans "Read" %}</span>
       {% elif d.on_the_way_notif.status == "delivered" %}
-        <span class="nchip nchip-delivered">Isporučeno</span>
+        <span class="nchip nchip-delivered">{% trans "Delivered" %}</span>
       {% elif d.on_the_way_notif.status == "failed" %}
-        <span class="nchip nchip-failed">Nije dostavljeno</span>
+        <span class="nchip nchip-failed">{% trans "Not delivered" %}</span>
       {% endif %}
     {% endif %}
     {% if d.rating %}<span class="card-rating">{{ d.rating.value }}★</span>{% endif %}
   </div>
   {% if d.opted_out %}
-    <div class="card-optout">primalac otkazao obaveštenja</div>
+    <div class="card-optout">{% trans "recipient opted out of notifications" %}</div>
   {% endif %}
 
   {% if d.status == "new" %}
     <form method="post" action="{% url 'deliveries:mark_ready' d.pk %}" class="card-action">
       {% csrf_token %}
-      <button type="submit" class="btn btn-primary">Označi spremno</button>
+      <button type="submit" class="btn btn-primary">{% trans "Mark ready" %}</button>
     </form>
   {% endif %}
 
   {% if d.status == "created" %}
     <form method="post" action="{% url 'deliveries:start' d.pk %}" class="card-action">
       {% csrf_token %}
-      <button type="submit" class="btn btn-primary">Dostava je počela…</button>
+      <button type="submit" class="btn btn-primary">{% trans "Delivery has started" %}…</button>
     </form>
   {% endif %}
 
   {% if d.on_the_way_notif.status == "failed" %}
     <form method="post" action="{% url 'deliveries:resend' d.pk %}" class="card-action"
-          onsubmit="return confirm('Poslati poruku ponovo?');">
+          onsubmit="return confirm('{% trans "Send the message again?" %}');">
       {% csrf_token %}
       <div class="field" style="margin-bottom:8px">
         <input type="text" name="recipient_phone" inputmode="tel"
                value="{{ d.recipient_phone }}" placeholder="064 123 4567">
       </div>
-      <button type="submit" class="btn btn-primary">Pošalji ponovo</button>
+      <button type="submit" class="btn btn-primary">{% trans "Resend" %}</button>
     </form>
   {% endif %}
 
   {% if d.status == "on_the_way" %}
     <form method="post" action="{% url 'deliveries:mark_delivered' d.pk %}" class="card-action"
-          onsubmit="return confirm('Označiti kao isporučeno?');">
+          onsubmit="return confirm('{% trans "Mark as delivered?" %}');">
       {% csrf_token %}
-      <button type="submit" class="btn btn-ghost">Označi isporučeno</button>
+      <button type="submit" class="btn btn-ghost">{% trans "Mark delivered" %}</button>
     </form>
   {% endif %}
 
   <form method="post" action="{% url 'deliveries:delete' d.pk %}" class="card-delete"
-        onsubmit="return confirm('Obrisati ovu dostavu?');">
+        onsubmit="return confirm('{% trans "Delete this delivery?" %}');">
     {% csrf_token %}
-    <button type="submit" class="btn-link-danger">Obriši dostavu</button>
+    <button type="submit" class="btn-link-danger">{% trans "Delete delivery" %}</button>
   </form>
 </div>

@@ -3,6 +3,8 @@ from django.core.cache import cache
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _l
 from django.views.decorators.http import require_POST
 
 from common.timewindow import format_eta
@@ -10,9 +12,9 @@ from deliveries.models import Delivery, Rating, TrackingToken
 
 # Порядок шагов степпера и какой статус доставки на каком шаге.
 _STEPS = [
-    ("Primljeno", Delivery.Status.CREATED),
-    ("U dostavi", Delivery.Status.ON_THE_WAY),
-    ("Isporučeno", Delivery.Status.DELIVERED),
+    (_l("Received"), Delivery.Status.CREATED),
+    (_l("In delivery"), Delivery.Status.ON_THE_WAY),
+    (_l("Delivered"), Delivery.Status.DELIVERED),
 ]
 _RATEABLE = (Delivery.Status.ON_THE_WAY, Delivery.Status.DELIVERED)
 
@@ -59,7 +61,7 @@ def _active_token(token: str):
 def status(request, token):
     """Публичная брендовая страница статуса (без логина). Минимум данных (NFR-3)."""
     if _rate_limited(request):
-        return HttpResponse("Previše zahteva. Pokušajte kasnije.", status=429)
+        return HttpResponse(_("Too many requests. Try again later."), status=429)
 
     token_obj = _active_token(token)
     if token_obj is None:

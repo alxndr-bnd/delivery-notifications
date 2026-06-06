@@ -1,25 +1,24 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}API · Javi{% endblock %}
 {% block body %}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">javi<span>.</span></div>
-    <a href="{% url 'deliveries:list' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">← Dostave</a>
+    <a href="{% url 'deliveries:list' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">← {% trans "Deliveries" %}</a>
   </div>
 
-  <div class="h">API za integraciju</div>
+  <div class="h">{% trans "Integration API" %}</div>
   <div class="card">
     <p style="margin:0 0 10px">
-      Javi uskoro dobija API: kreirajte API ključ i šaljite porudžbine direktno
-      iz vašeg sistema — Javi obaveštava vaše kupce o dostavi.
+      {% trans "Create an API key and send orders directly from your system — Javi notifies your customers about the delivery." %}
     </p>
     <ul class="muted" style="font-size:14px;padding-left:18px;margin:0">
-      <li>Generisanje API ključa u profilu</li>
-      <li>Kreiranje porudžbine (adresa + telefon kupca)</li>
-      <li>Označavanje „dostava je počela“ → kupac dobija obaveštenje i link za praćenje</li>
-      <li>Status dostave i ocena</li>
+      <li>{% trans "Generate an API key in your profile" %}</li>
+      <li>{% trans "Create an order (customer address + phone)" %}</li>
+      <li>{% trans "Mark “delivery started” → customer gets a notification and a tracking link" %}</li>
+      <li>{% trans "Delivery status and rating" %}</li>
     </ul>
-    <div class="muted" style="font-size:13px;margin-top:12px">U pripremi.</div>
   </div>
 </div>
 {% endblock %}

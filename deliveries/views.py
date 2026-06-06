@@ -6,6 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views import View
 from django.views.generic import TemplateView
 
@@ -112,11 +113,14 @@ class ShopProfileView(LoginRequiredMixin, View):
             shop.name = form.cleaned_data["name"]
             shop.save(update_fields=["name"])
             if set_shop_origin(shop, form.cleaned_data["address"]):
-                messages.success(request, "Sačuvano.")
+                messages.success(request, _("Saved."))
                 return redirect("deliveries:profile")  # PRG
             messages.error(
                 request,
-                "Naziv je sačuvan, ali adresu nismo prepoznali. Proverite i pokušajte ponovo.",
+                _(
+                    "Name saved, but we could not recognize the address. "
+                    "Please check and try again."
+                ),
             )
         return render(request, self.template_name, {"form": form, "shop": shop})
 
@@ -140,18 +144,21 @@ class DeliveryCreateView(LoginRequiredMixin, View):
         form = DeliveryForm(request.POST)
         if form.is_valid():
             phone = form.cleaned_data["phone_result"]
-            _, geocoded = create_delivery(
+            _new, geocoded = create_delivery(
                 request.user.shop,
                 recipient_name=form.cleaned_data["recipient_name"],
                 phone=phone,
                 dest_address=form.cleaned_data["dest_address"],
                 description=form.cleaned_data["description"],
             )
-            messages.success(request, "Dostava je dodata.")
+            messages.success(request, _("Delivery added."))
             if phone.is_risky:
-                messages.warning(request, "Broj nije srpski mobilni — proverite.")
+                messages.warning(request, _("The number is not a Serbian mobile — please check."))
             if not geocoded:
-                messages.warning(request, "Adresu nismo prepoznali — proverite je kasnije.")
+                messages.warning(
+                    request,
+                    _("We could not recognize the address — please check it later."),
+                )
             return redirect("deliveries:list")
         return render(request, self.template_name, {"form": form})
 
@@ -159,7 +166,7 @@ class DeliveryCreateView(LoginRequiredMixin, View):
         """Без заданного origin доставку не завести — отправляем в профиль."""
         shop = getattr(request.user, "shop", None)
         if shop is None or shop.origin_lat is None:
-            messages.info(request, "Prvo podesite adresu prodavnice.")
+            messages.info(request, _("First set your store address."))
             return redirect("deliveries:profile")
         return None
 
@@ -206,16 +213,20 @@ class DeliveryStartView(LoginRequiredMixin, View):
             manual_eta = datetime.combine(today, form.cleaned_data["eta_time"], tzinfo=BELGRADE)
             result = start_delivery(delivery, manual_eta=manual_eta)
             if result.already:
-                messages.info(request, "Dostava je već u toku.")
+                messages.info(request, _("Delivery is already in progress."))
             elif result.ok:
-                messages.success(request, f"Kupac obavešten · stiže do {format_eta(result.eta_at)}")
+                messages.success(
+                    request,
+                    _("Customer notified · arriving by %(time)s")
+                    % {"time": format_eta(result.eta_at)},
+                )
                 if not result.sent:
-                    messages.warning(request, "Poruka nije poslata — pokušajte ponovo kasnije.")
+                    messages.warning(request, _("Message not sent — try again later."))
             return redirect("deliveries:list")
 
         # Шаг 1: уже стартовала? — не дублируем.
         if delivery.status == Delivery.Status.ON_THE_WAY:
-            messages.info(request, "Dostava je već u toku.")
+            messages.info(request, _("Delivery is already in progress."))
             return redirect("deliveries:list")
 
         # Шаг 1: считаем ETA (now + время в пути + запас) и показываем экран подтверждения.
@@ -243,15 +254,15 @@ class DeliveryResendView(LoginRequiredMixin, View):
         delivery = get_object_or_404(Delivery, pk=pk, shop=shop)
         form = RecipientPhoneForm(request.POST)
         if not form.is_valid():
-            messages.error(request, "Neispravan broj. Npr. 064 123 4567")
+            messages.error(request, _("Invalid number. E.g. 064 123 4567"))
             return redirect("deliveries:list")
         result = resend_on_the_way(delivery, new_phone=form.cleaned_data["phone_result"])
         if result is None:
-            messages.error(request, "Nije moguće ponovo poslati.")
+            messages.error(request, _("Unable to resend."))
         elif result.ok:
-            messages.success(request, "Poruka je ponovo poslata.")
+            messages.success(request, _("Message resent."))
         else:
-            messages.warning(request, "Poruka nije poslata — proverite broj.")
+            messages.warning(request, _("Message not sent — check the number."))
         return redirect("deliveries:list")
 
 
@@ -263,7 +274,7 @@ class DeliveryMarkDeliveredView(LoginRequiredMixin, View):
         delivery = get_object_or_404(Delivery, pk=pk, shop=shop)
         delivery.status = Delivery.Status.DELIVERED
         delivery.save(update_fields=["status"])
-        messages.success(request, "Označeno kao isporučeno.")
+        messages.success(request, _("Marked as delivered."))
         return redirect("deliveries:list")
 
 
@@ -298,7 +309,7 @@ class DeliveryDeleteView(LoginRequiredMixin, View):
         delivery = get_object_or_404(Delivery, pk=pk, shop=shop, deleted_at__isnull=True)
         delivery.deleted_at = timezone.now()
         delivery.save(update_fields=["deleted_at"])
-        messages.success(request, "Dostava je obrisana.")
+        messages.success(request, _("Delivery deleted."))
         return redirect("deliveries:list")
 
 
@@ -324,7 +335,7 @@ class DeliveryRestoreView(LoginRequiredMixin, View):
         delivery = get_object_or_404(Delivery, pk=pk, shop=shop, deleted_at__isnull=False)
         delivery.deleted_at = None
         delivery.save(update_fields=["deleted_at"])
-        messages.success(request, "Dostava je vraćena.")
+        messages.success(request, _("Delivery restored."))
         return redirect("deliveries:deleted")
 
 

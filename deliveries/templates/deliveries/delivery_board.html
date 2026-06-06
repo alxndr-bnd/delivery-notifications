@@ -1,22 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Tabla · Javi{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Board" %} · Javi{% endblock %}
 {% block body %}
 <div class="wrap wrap--wide">
   <div class="topbar">
     <div class="logo">javi<span>.</span></div>
     <div style="display:flex;gap:8px;align-items:center">
-      <a href="{% url 'deliveries:profile' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">Prodavnica</a>
+      <a href="{% url 'deliveries:profile' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">{% trans "Store" %}</a>
       <form method="post" action="{% url 'accounts:logout' %}" style="margin:0">
         {% csrf_token %}
-        <button type="submit" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">Odjava</button>
+        <button type="submit" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">{% trans "Sign out" %}</button>
       </form>
     </div>
   </div>
 
   <form method="post" action="{% url 'deliveries:set_view' %}" class="view-switch">
     {% csrf_token %}
-    <button type="submit" name="mode" value="list" class="view-tab">Lista</button>
-    <button type="submit" name="mode" value="board" class="view-tab is-active">Tabla</button>
+    <button type="submit" name="mode" value="list" class="view-tab">{% trans "List" %}</button>
+    <button type="submit" name="mode" value="board" class="view-tab is-active">{% trans "Board" %}</button>
   </form>
 
   {% if shop %}
@@ -34,32 +35,34 @@
 
   <div class="kanban">
     <div class="kanban-col">
-      <div class="kanban-col-h">Novo · {{ novo|length }}</div>
+      <div class="kanban-col-h">{% trans "New" %} · {{ novo|length }}</div>
       {% for d in novo %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
     </div>
     <div class="kanban-col">
-      <div class="kanban-col-h">Spremno · {{ spremno|length }}</div>
+      <div class="kanban-col-h">{% trans "Ready" %} · {{ spremno|length }}</div>
       {% for d in spremno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
     </div>
     <div class="kanban-col">
-      <div class="kanban-col-h">U dostavi · {{ u_dostavi|length }}</div>
+      <div class="kanban-col-h">{% trans "In delivery" %} · {{ u_dostavi|length }}</div>
       {% for d in u_dostavi %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
     </div>
     <div class="kanban-col">
-      <div class="kanban-col-h">Završeno · {{ zavrseno|length }}</div>
+      <div class="kanban-col-h">{% trans "Done" %} · {{ zavrseno|length }}</div>
       {% for d in zavrseno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
     </div>
   </div>
 
   <div class="footer">
-    <a href="{% url 'deliveries:deleted' %}">Obrisane porudžbine</a>
+    <a href="{% url 'deliveries:deleted' %}">{% trans "Deleted orders" %}</a>
     <span>·</span>
-    <a href="{% url 'deliveries:api_docs' %}">API za integraciju</a>
+    <a href="{% url 'deliveries:api_docs' %}">{% trans "Integration API" %}</a>
+    <span>·</span>
+    {% include "_lang_switch.html" %}
   </div>
 </div>
 
 <div class="fab">
-  <a class="btn btn-primary" href="{% url 'deliveries:create' %}">Nova dostava…</a>
+  <a class="btn btn-primary" href="{% url 'deliveries:create' %}">{% trans "New delivery" %}…</a>
 </div>
 
 <script>

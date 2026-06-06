@@ -1,22 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Dostave · Javi{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Deliveries" %} · Javi{% endblock %}
 {% block body %}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">javi<span>.</span></div>
     <div style="display:flex;gap:8px;align-items:center">
-      <a href="{% url 'deliveries:profile' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">Prodavnica</a>
+      <a href="{% url 'deliveries:profile' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">{% trans "Store" %}</a>
       <form method="post" action="{% url 'accounts:logout' %}" style="margin:0">
         {% csrf_token %}
-        <button type="submit" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">Odjava</button>
+        <button type="submit" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">{% trans "Sign out" %}</button>
       </form>
     </div>
   </div>
 
   <form method="post" action="{% url 'deliveries:set_view' %}" class="view-switch">
     {% csrf_token %}
-    <button type="submit" name="mode" value="list" class="view-tab is-active">Lista</button>
-    <button type="submit" name="mode" value="board" class="view-tab">Tabla</button>
+    <button type="submit" name="mode" value="list" class="view-tab is-active">{% trans "List" %}</button>
+    <button type="submit" name="mode" value="board" class="view-tab">{% trans "Board" %}</button>
   </form>
 
   {% if shop %}
@@ -34,45 +35,45 @@
 
   {% if deliveries %}
     {% if novo %}
-      <div class="h">Novo</div>
+      <div class="h">{% trans "New" %}</div>
       {% for d in novo %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
     {% endif %}
     {% if spremno %}
-      <div class="h">Spremno</div>
+      <div class="h">{% trans "Ready" %}</div>
       {% for d in spremno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
     {% endif %}
     {% if u_dostavi %}
-      <div class="h">U dostavi</div>
+      <div class="h">{% trans "In delivery" %}</div>
       {% for d in u_dostavi %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
     {% endif %}
     {% if zavrseno %}
       <details class="completed" id="completed-section" {% if completed_expanded %}open{% endif %}>
-        <summary class="h completed-summary">Završeno ({{ zavrseno|length }})</summary>
+        <summary class="h completed-summary">{% blocktrans count n=zavrseno|length %}Done ({{ n }}){% plural %}Done ({{ n }}){% endblocktrans %}</summary>
         {% for d in zavrseno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
       </details>
     {% endif %}
   {% else %}
     <div class="empty">
       <div class="big">📦</div>
-      <div>Nema dostava danas.</div>
-      <div class="muted" style="font-size:13px;margin-top:6px">Dodajte prvu dostavu dugmetom ispod.</div>
+      <div>{% trans "No deliveries today." %}</div>
+      <div class="muted" style="font-size:13px;margin-top:6px">{% trans "Add your first delivery with the button below." %}</div>
     </div>
   {% endif %}
 
   <div class="footer">
-    <a href="{% url 'deliveries:deleted' %}">Obrisane porudžbine</a>
+    <a href="{% url 'deliveries:deleted' %}">{% trans "Deleted orders" %}</a>
     <span>·</span>
-    <a href="{% url 'deliveries:api_docs' %}">API za integraciju</a>
+    <a href="{% url 'deliveries:api_docs' %}">{% trans "Integration API" %}</a>
+    <span>·</span>
+    {% include "_lang_switch.html" %}
   </div>
 </div>
 
 <div class="fab">
-  <a class="btn btn-primary" href="{% url 'deliveries:create' %}">Nova dostava…</a>
+  <a class="btn btn-primary" href="{% url 'deliveries:create' %}">{% trans "New delivery" %}…</a>
 </div>
 
 <script>
-// Авто-обновление: поллим сигнатуру списка; при изменении (новый заказ через API,
-// смена статуса, удаление) — обновляем страницу, не мешая вводу.
 (function () {
   var current = "{{ feed_sig }}";
   var feedUrl = "{% url 'deliveries:feed' %}";

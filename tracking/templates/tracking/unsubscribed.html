@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Odjava · Javi{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Unsubscribe" %} · Javi{% endblock %}
 {% block body %}
 <div class="track">
   <div class="track-card track-card--plain">
-    <div class="track-status">Odjavljeni ste sa obaveštenja.</div>
-    <div class="muted" style="font-size:13px;margin-top:8px">Više vam nećemo slati poruke o ocenjivanju.</div>
+    <div class="track-status">{% trans "You have been unsubscribed." %}</div>
+    <div class="muted" style="font-size:13px;margin-top:8px">{% trans "We will no longer send you rating messages." %}</div>
   </div>
 </div>
 {% endblock %}

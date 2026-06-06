@@ -38,10 +38,10 @@ def test_on_the_way_shows_eta_city_no_private_data(client):
     token = _token(Delivery.Status.ON_THE_WAY)
     body = client.get(f"/t/{token.token}/").content.decode()
     assert "Pizza Napoli" in body
-    assert "Stiže okvirno do" in body
+    assert "Arriving approximately by" in body
     assert "Beograd" in body
     # степпер всегда рендерится целиком
-    assert "Primljeno" in body and "U dostavi" in body and "Isporučeno" in body
+    assert "Received" in body and "In delivery" in body and "Delivered" in body
     assert "+381641234567" not in body
     assert "Tajna adresa" not in body
 
@@ -49,13 +49,13 @@ def test_on_the_way_shows_eta_city_no_private_data(client):
 def test_created_step_primljeno(client):
     token = _token(Delivery.Status.CREATED, eta_minutes=0)
     body = client.get(f"/t/{token.token}/").content.decode()
-    assert "Porudžbina je primljena" in body
+    assert "Your order has been received" in body
 
 
 def test_delivered_step(client):
     token = _token(Delivery.Status.DELIVERED, eta_minutes=0)
     body = client.get(f"/t/{token.token}/").content.decode()
-    assert "isporučena" in body
+    assert "has been delivered" in body
     # терминальный статус: все шаги завершены (✓), нет «текущего» (●)
     assert "step--active" not in body
     assert body.count("step--done") == 3
@@ -77,7 +77,7 @@ def test_expired_link_410(client):
     token.save()
     resp = client.get(f"/t/{token.token}/")
     assert resp.status_code == 410
-    assert "istekao" in resp.content.decode()
+    assert "expired" in resp.content.decode()
 
 
 def test_rating_capture_and_thanks(client):
@@ -85,7 +85,7 @@ def test_rating_capture_and_thanks(client):
     token = _token(Delivery.Status.ON_THE_WAY)
     url = f"/t/{token.token}/"
     # до оценки — видны звёзды
-    assert "Kako je prošla dostava" in client.get(url).content.decode()
+    assert "How did the delivery go" in client.get(url).content.decode()
     # ставим оценку
     resp = client.post(f"{url}oceni/", {"value": "5"})
     assert resp.status_code == 302
@@ -93,8 +93,8 @@ def test_rating_capture_and_thanks(client):
     assert token.delivery.rating.value == 5
     # после оценки — «Hvala!», звёзд нет
     body = client.get(url).content.decode()
-    assert "Hvala" in body
-    assert "Kako je prošla dostava" not in body
+    assert "Thank you" in body
+    assert "How did the delivery go" not in body
     # повтор не плодит дубли (обновляет)
     client.post(f"{url}oceni/", {"value": "3"})
     token.delivery.refresh_from_db()
@@ -113,15 +113,15 @@ def test_recipient_can_mark_received(client):
     """Получатель подтверждает получение → статус delivered, появляется блок оценки."""
     token = _token(Delivery.Status.ON_THE_WAY)
     url = f"/t/{token.token}/"
-    assert "Primio sam porudžbinu" in client.get(url).content.decode()
+    assert "I received the order" in client.get(url).content.decode()
     resp = client.post(f"{url}primljeno/")
     assert resp.status_code == 302
     token.delivery.refresh_from_db()
     assert token.delivery.status == Delivery.Status.DELIVERED
     body = client.get(url).content.decode()
-    assert "isporučena" in body
-    assert "Primio sam porudžbinu" not in body
-    assert "Kako je prošla dostava" in body  # оценку всё ещё можно поставить
+    assert "has been delivered" in body
+    assert "I received the order" not in body
+    assert "How did the delivery go" in body  # оценку всё ещё можно поставить
 
 
 def test_unsubscribe_adds_to_blocklist(client):
@@ -131,7 +131,7 @@ def test_unsubscribe_adds_to_blocklist(client):
     token = _token(Delivery.Status.ON_THE_WAY)
     resp = client.get(f"/t/{token.token}/odjava/")
     assert resp.status_code == 200
-    assert "Odjavljeni ste" in resp.content.decode()
+    assert "You have been unsubscribed" in resp.content.decode()
     assert OptOut.objects.filter(phone=token.delivery.recipient_phone).exists()
 
 

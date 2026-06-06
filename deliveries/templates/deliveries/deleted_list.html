@@ -1,13 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Obrisane · Javi{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Deleted" %} · Javi{% endblock %}
 {% block body %}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">javi<span>.</span></div>
-    <a href="{% url 'deliveries:list' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">← Dostave</a>
+    <a href="{% url 'deliveries:list' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">← {% trans "Deliveries" %}</a>
   </div>
 
-  <div class="h">Obrisane porudžbine</div>
+  <div class="h">{% trans "Deleted orders" %}</div>
 
   {% if messages %}
     {% for message in messages %}
@@ -22,12 +23,12 @@
         <div class="card-addr">{{ d.dest_address }}</div>
         <form method="post" action="{% url 'deliveries:restore' d.pk %}" class="card-action">
           {% csrf_token %}
-          <button type="submit" class="btn btn-ghost">Vrati</button>
+          <button type="submit" class="btn btn-ghost">{% trans "Restore" %}</button>
         </form>
       </div>
     {% endfor %}
   {% else %}
-    <div class="empty"><div>Nema obrisanih porudžbina.</div></div>
+    <div class="empty"><div>{% trans "No deleted orders." %}</div></div>
   {% endif %}
 </div>
 {% endblock %}

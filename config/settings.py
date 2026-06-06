@@ -58,6 +58,7 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "django.template.context_processors.i18n",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
@@ -85,7 +86,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # i18n / время
-LANGUAGE_CODE = "sr-latn"
+LANGUAGE_CODE = "en"  # дефолт — английский
+LANGUAGES = [("en", "English"), ("sr", "Srpski")]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = "Europe/Belgrade"
 USE_I18N = True
 USE_TZ = True

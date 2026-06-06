@@ -3,6 +3,7 @@ import secrets
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 def _new_tracking_token() -> str:
@@ -39,10 +40,10 @@ class Delivery(models.Model):
     """Доставка дня: один получатель, адрес назначения, телефон, статус."""
 
     class Status(models.TextChoices):
-        NEW = "new", "Novo"  # новый заказ (принят, ещё не готов)
-        CREATED = "created", "Spremno"  # готов к старту
-        ON_THE_WAY = "on_the_way", "U dostavi"
-        DELIVERED = "delivered", "Završeno"
+        NEW = "new", _("New")  # новый заказ (принят, ещё не готов)
+        CREATED = "created", _("Ready")  # готов к старту
+        ON_THE_WAY = "on_the_way", _("In delivery")
+        DELIVERED = "delivered", _("Done")
 
     class Source(models.TextChoices):
         MANUAL = "manual", "manual"

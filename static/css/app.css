@@ -44,6 +44,9 @@ a{color:var(--brand)}
 .footer{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);
   font-size:13px;color:var(--muted);display:flex;gap:8px;justify-content:center;align-items:center}
 .footer a{color:var(--muted)}
+.lang-switch{display:inline-flex;gap:4px}
+.lang-link{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px}
+.lang-link.is-active{color:var(--ink);font-weight:800}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);padding:13px 14px;margin-bottom:10px}
 .card-name{font-size:15px;font-weight:700}
 .card-addr{font-size:13px;color:var(--muted);margin-top:2px}

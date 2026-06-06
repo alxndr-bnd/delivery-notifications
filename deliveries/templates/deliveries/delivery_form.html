@@ -1,13 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Nova dostava · Javi{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "New delivery" %} · Javi{% endblock %}
 {% block body %}
 <div class="wrap">
   <div class="topbar">
     <div class="logo">javi<span>.</span></div>
-    <a href="{% url 'deliveries:list' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">← Dostave</a>
+    <a href="{% url 'deliveries:list' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">← {% trans "Deliveries" %}</a>
   </div>
 
-  <div class="h">Nova dostava</div>
+  <div class="h">{% trans "New delivery" %}</div>
 
   <div class="card">
     <form method="post" novalidate>
@@ -24,12 +25,11 @@
           {% endif %}
         </div>
       {% endfor %}
-      <button type="submit" class="btn btn-primary">Sačuvaj</button>
+      <button type="submit" class="btn btn-primary">{% trans "Save" %}</button>
     </form>
   </div>
 </div>
 
-{# Автоподстановка клиента: ввёл номер → имя и адрес из прошлой доставки (если был). #}
 <script>
 (function () {
   var phone = document.getElementById("id_recipient_phone");
@@ -44,7 +44,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !d.found) return;
-        if (!name.value) name.value = d.name;     // не перезаписываем введённое
+        if (!name.value) name.value = d.name;
         if (!addr.value) addr.value = d.address;
       })
       .catch(function () {});
