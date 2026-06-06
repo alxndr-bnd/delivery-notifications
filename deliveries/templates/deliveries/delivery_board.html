@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Dostave · Javi{% endblock %}
+{% block title %}Tabla · Javi{% endblock %}
 {% block body %}
-<div class="wrap">
+<div class="wrap wrap--wide">
   <div class="topbar">
     <div class="logo">javi<span>.</span></div>
     <div style="display:flex;gap:8px;align-items:center">
@@ -15,8 +15,8 @@
 
   <form method="post" action="{% url 'deliveries:set_view' %}" class="view-switch">
     {% csrf_token %}
-    <button type="submit" name="mode" value="list" class="view-tab is-active">Lista</button>
-    <button type="submit" name="mode" value="board" class="view-tab">Tabla</button>
+    <button type="submit" name="mode" value="list" class="view-tab">Lista</button>
+    <button type="submit" name="mode" value="board" class="view-tab is-active">Tabla</button>
   </form>
 
   {% if shop %}
@@ -32,32 +32,24 @@
     {% endfor %}
   {% endif %}
 
-  {% if deliveries %}
-    {% if novo %}
-      <div class="h">Novo</div>
+  <div class="kanban">
+    <div class="kanban-col">
+      <div class="kanban-col-h">Novo · {{ novo|length }}</div>
       {% for d in novo %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
-    {% endif %}
-    {% if spremno %}
-      <div class="h">Spremno</div>
-      {% for d in spremno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
-    {% endif %}
-    {% if u_dostavi %}
-      <div class="h">U dostavi</div>
-      {% for d in u_dostavi %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
-    {% endif %}
-    {% if zavrseno %}
-      <details class="completed" id="completed-section" {% if completed_expanded %}open{% endif %}>
-        <summary class="h completed-summary">Završeno ({{ zavrseno|length }})</summary>
-        {% for d in zavrseno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
-      </details>
-    {% endif %}
-  {% else %}
-    <div class="empty">
-      <div class="big">📦</div>
-      <div>Nema dostava danas.</div>
-      <div class="muted" style="font-size:13px;margin-top:6px">Dodajte prvu dostavu dugmetom ispod.</div>
     </div>
-  {% endif %}
+    <div class="kanban-col">
+      <div class="kanban-col-h">Spremno · {{ spremno|length }}</div>
+      {% for d in spremno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-col-h">U dostavi · {{ u_dostavi|length }}</div>
+      {% for d in u_dostavi %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-col-h">Završeno · {{ zavrseno|length }}</div>
+      {% for d in zavrseno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
+    </div>
+  </div>
 
   <div class="footer">
     <a href="{% url 'deliveries:deleted' %}">Obrisane porudžbine</a>
@@ -71,8 +63,6 @@
 </div>
 
 <script>
-// Авто-обновление: поллим сигнатуру списка; при изменении (новый заказ через API,
-// смена статуса, удаление) — обновляем страницу, не мешая вводу.
 (function () {
   var current = "{{ feed_sig }}";
   var feedUrl = "{% url 'deliveries:feed' %}";
@@ -87,22 +77,6 @@
       .then(function (d) { if (d && d.sig && d.sig !== current) location.reload(); })
       .catch(function () {});
   }, 15000);
-})();
-
-(function () {
-  var sec = document.getElementById("completed-section");
-  if (!sec) return;
-  function getCookie(name) {
-    var m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
-    return m ? m.pop() : "";
-  }
-  sec.addEventListener("toggle", function () {
-    fetch("{% url 'deliveries:toggle_completed' %}", {
-      method: "POST",
-      headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/x-www-form-urlencoded"},
-      body: "expanded=" + (sec.open ? "1" : "0"),
-    }).catch(function () {});
-  });
 })();
 </script>
 {% endblock %}

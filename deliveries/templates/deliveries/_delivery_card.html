@@ -22,6 +22,13 @@
     <div class="card-optout">primalac otkazao obaveštenja</div>
   {% endif %}
 
+  {% if d.status == "new" %}
+    <form method="post" action="{% url 'deliveries:mark_ready' d.pk %}" class="card-action">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Označi spremno</button>
+    </form>
+  {% endif %}
+
   {% if d.status == "created" %}
     <form method="post" action="{% url 'deliveries:start' d.pk %}" class="card-action">
       {% csrf_token %}

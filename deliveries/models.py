@@ -25,8 +25,9 @@ class Shop(models.Model):
     origin_lat = models.FloatField("широта", null=True, blank=True)
     origin_lng = models.FloatField("долгота", null=True, blank=True)
 
-    # UI-предпочтение: развёрнута ли секция «Завершённые» в кабинете.
+    # UI-предпочтения кабинета.
     completed_expanded = models.BooleanField("секция «завершённые» развёрнута", default=False)
+    kanban_view = models.BooleanField("вид «канбан-доска»", default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -38,7 +39,8 @@ class Delivery(models.Model):
     """Доставка дня: один получатель, адрес назначения, телефон, статус."""
 
     class Status(models.TextChoices):
-        CREATED = "created", "Spremno"  # готово к старту
+        NEW = "new", "Novo"  # новый заказ (принят, ещё не готов)
+        CREATED = "created", "Spremno"  # готов к старту
         ON_THE_WAY = "on_the_way", "U dostavi"
         DELIVERED = "delivered", "Završeno"
 
@@ -57,7 +59,7 @@ class Delivery(models.Model):
     dest_lng = models.FloatField("долгота", null=True, blank=True)
     description = models.CharField("описание", max_length=300, blank=True)
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.MANUAL)
-    status = models.CharField(max_length=12, choices=Status.choices, default=Status.CREATED)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.NEW)
     # ETA/старт (Story 2.1): рассчитывается при «Dostava je počela».
     eta_at = models.DateTimeField("ETA (UTC)", null=True, blank=True)
     eta_source = models.CharField("источник ETA", max_length=6, blank=True)  # auto | manual

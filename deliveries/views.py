@@ -43,9 +43,13 @@ class DeliveryFeedView(LoginRequiredMixin, View):
 
 
 class DeliveryListView(LoginRequiredMixin, TemplateView):
-    """Кабинет магазина: доставки дня, сгруппированы по статусу, скоуплены по магазину."""
+    """Кабинет магазина: список или канбан-доска (по предпочтению магазина)."""
 
-    template_name = "deliveries/delivery_list.html"
+    def get_template_names(self):
+        shop = getattr(self.request.user, "shop", None)
+        if shop is not None and shop.kanban_view:
+            return ["deliveries/delivery_board.html"]
+        return ["deliveries/delivery_list.html"]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -76,10 +80,12 @@ class DeliveryListView(LoginRequiredMixin, TemplateView):
             d.opted_out = d.recipient_phone in opted
         ctx["shop"] = shop
         ctx["deliveries"] = deliveries
+        ctx["novo"] = [d for d in deliveries if d.status == Delivery.Status.NEW]
         ctx["u_dostavi"] = [d for d in deliveries if d.status == Delivery.Status.ON_THE_WAY]
         ctx["spremno"] = [d for d in deliveries if d.status == Delivery.Status.CREATED]
         ctx["zavrseno"] = [d for d in deliveries if d.status == Delivery.Status.DELIVERED]
         ctx["completed_expanded"] = bool(shop and shop.completed_expanded)
+        ctx["kanban_view"] = bool(shop and shop.kanban_view)
         ctx["feed_sig"] = _deliveries_signature(shop)
         return ctx
 
@@ -258,6 +264,29 @@ class DeliveryMarkDeliveredView(LoginRequiredMixin, View):
         delivery.status = Delivery.Status.DELIVERED
         delivery.save(update_fields=["status"])
         messages.success(request, "Označeno kao isporučeno.")
+        return redirect("deliveries:list")
+
+
+class DeliveryMarkReadyView(LoginRequiredMixin, View):
+    """Новый заказ → готов к старту (Novo → Spremno)."""
+
+    def post(self, request, pk):
+        shop = getattr(request.user, "shop", None)
+        delivery = get_object_or_404(Delivery, pk=pk, shop=shop, deleted_at__isnull=True)
+        if delivery.status == Delivery.Status.NEW:
+            delivery.status = Delivery.Status.CREATED
+            delivery.save(update_fields=["status"])
+        return redirect("deliveries:list")
+
+
+class SetViewView(LoginRequiredMixin, View):
+    """Переключение вида кабинета: список / канбан-доска (сохраняется в профиле)."""
+
+    def post(self, request):
+        shop = getattr(request.user, "shop", None)
+        if shop is not None:
+            shop.kanban_view = request.POST.get("mode") == "board"
+            shop.save(update_fields=["kanban_view"])
         return redirect("deliveries:list")
 
 

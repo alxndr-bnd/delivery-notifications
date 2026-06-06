@@ -20,6 +20,20 @@ body{
 .logo{font-weight:800;font-size:18px}.logo span{color:var(--brand)}
 a{color:var(--brand)}
 .h{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 2px 10px}
+.wrap--wide{max-width:1100px}
+/* переключатель список/доска */
+.view-switch{display:flex;gap:0;margin:0 2px 10px;width:max-content}
+.view-tab{background:var(--surface);border:1px solid var(--line);color:var(--muted);
+  font-size:13px;font-weight:700;padding:6px 14px;cursor:pointer}
+.view-tab:first-child{border-radius:10px 0 0 10px}
+.view-tab:last-child{border-radius:0 10px 10px 0;border-left:0}
+.view-tab.is-active{background:var(--brand);color:#fff;border-color:var(--brand)}
+/* канбан-доска */
+.kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.kanban-col{flex:0 0 84vw;max-width:280px;min-width:240px;background:var(--bg);
+  border:1px solid var(--line);border-radius:14px;padding:10px}
+.kanban-col-h{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.03em;margin:2px 2px 10px}
 .shop-bar{font-size:12px;color:var(--muted);margin:-6px 2px 4px}
 .shop-bar-name{font-weight:700;color:var(--ink)}
 .shop-bar-addr{margin-left:2px}
@@ -44,6 +58,7 @@ a{color:var(--brand)}
 .eta-big{font-size:28px;font-weight:800;color:var(--brand)}
 /* status_chip — pill, цвет по семантике, статус всегда с текстом (a11y) */
 .chip{display:inline-block;border-radius:var(--radius-pill);font-size:12px;font-weight:700;padding:3px 10px}
+.chip-new{background:#fff4e5;color:#a8631a}
 .chip-created{background:#eef2fb;color:#3a4a73}
 .chip-on_the_way{background:#e7efff;color:var(--on-the-way)}
 .chip-delivered{background:#eafaf0;color:var(--delivered)}

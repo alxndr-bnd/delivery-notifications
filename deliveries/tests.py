@@ -192,7 +192,7 @@ def test_create_delivery_geocode_success():
     assert delivery.dest_lat == pytest.approx(44.8167)
     assert delivery.dest_address == "Knez Mihailova 6, Beograd, Srbija"
     assert delivery.dest_city == "Beograd"
-    assert delivery.status == Delivery.Status.CREATED
+    assert delivery.status == Delivery.Status.NEW
 
 
 @override_settings(MAPS_PROVIDER=FAKE_FAIL)
@@ -236,8 +236,8 @@ def test_create_view_without_origin_redirects_to_profile(client):
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK)
-def test_create_view_success_appears_in_spremno(client):
-    """AC#7: валидная форма → доставка в БД и в группе Spremno списка."""
+def test_create_view_success_appears_in_novo(client):
+    """Валидная форма → доставка в БД и в группе «Novo» (новый заказ)."""
     shop = _make_shop_with_origin("d4@shop.rs", "Shop D4")
     client.login(username="d4@shop.rs", password="pass12345")
     resp = client.post(
@@ -249,8 +249,8 @@ def test_create_view_success_appears_in_spremno(client):
     assert shop.deliveries.count() == 1
 
     list_resp = client.get("/app/")
-    assert list_resp.context["spremno"][0].recipient_name == "Ana"
-    assert "Spremno" in list_resp.content.decode()
+    assert list_resp.context["novo"][0].recipient_name == "Ana"
+    assert "Novo" in list_resp.content.decode()
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK)
@@ -328,7 +328,7 @@ def test_start_delivery_route_unavailable_needs_manual_eta():
 
     assert result.needs_manual_eta is True
     delivery.refresh_from_db()
-    assert delivery.status == Delivery.Status.CREATED
+    assert delivery.status == Delivery.Status.NEW
     assert delivery.notifications.count() == 0
     assert len(FakeMessagingProvider.sent) == 0
 
@@ -387,7 +387,7 @@ def test_start_view_preview_shows_computed_eta(client):
     assert resp.status_code == 200
     assert "Procenjeno vreme dolaska" in resp.content.decode()
     delivery.refresh_from_db()
-    assert delivery.status == Delivery.Status.CREATED  # ещё не стартовала
+    assert delivery.status == Delivery.Status.NEW  # ещё не стартовала
     assert len(FakeMessagingProvider.sent) == 0
 
 
@@ -529,6 +529,33 @@ def test_feed_signature_changes_on_new_order(client):
     )
     sig2 = client.get("/app/feed/").json()["sig"]
     assert sig1 != sig2
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_mark_ready_moves_new_to_spremno(client):
+    shop = _make_shop_with_origin("mr@shop.rs", "MR Shop")
+    delivery, _ = create_delivery(
+        shop, recipient_name="Ana", phone=normalize_phone("064 123 4567"), dest_address="adr"
+    )
+    assert delivery.status == Delivery.Status.NEW
+    client.login(username="mr@shop.rs", password="pass12345")
+    client.post(f"/app/dostava/{delivery.pk}/spremno/")
+    delivery.refresh_from_db()
+    assert delivery.status == Delivery.Status.CREATED
+
+
+def test_set_view_switches_to_board(client):
+    shop = _make_shop_with_origin("sv@shop.rs", "SV Shop")
+    client.login(username="sv@shop.rs", password="pass12345")
+    client.post("/app/prikaz/", {"mode": "board"})
+    shop.refresh_from_db()
+    assert shop.kanban_view is True
+    # на доске видны 4 колонки
+    body = client.get("/app/").content.decode()
+    assert "kanban" in body
+    client.post("/app/prikaz/", {"mode": "list"})
+    shop.refresh_from_db()
+    assert shop.kanban_view is False
 
 
 def test_toggle_completed_saves_state(client):
