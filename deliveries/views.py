@@ -20,8 +20,12 @@ from .services import (
     compute_eta,
     create_delivery,
     eta_unavailable_reason,
+    mark_delivered,
+    mark_ready,
     resend_on_the_way,
+    restore,
     set_shop_origin,
+    soft_delete,
     start_delivery,
 )
 
@@ -304,8 +308,7 @@ class DeliveryMarkDeliveredView(LoginRequiredMixin, View):
     def post(self, request, pk):
         shop = getattr(request.user, "shop", None)
         delivery = get_object_or_404(Delivery, pk=pk, shop=shop)
-        delivery.status = Delivery.Status.DELIVERED
-        delivery.save(update_fields=["status"])
+        mark_delivered(delivery)
         messages.success(request, _("Marked as delivered."))
         return redirect("deliveries:list")
 
@@ -316,9 +319,7 @@ class DeliveryMarkReadyView(LoginRequiredMixin, View):
     def post(self, request, pk):
         shop = getattr(request.user, "shop", None)
         delivery = get_object_or_404(Delivery, pk=pk, shop=shop, deleted_at__isnull=True)
-        if delivery.status == Delivery.Status.NEW:
-            delivery.status = Delivery.Status.CREATED
-            delivery.save(update_fields=["status"])
+        mark_ready(delivery)
         return redirect("deliveries:list")
 
 
@@ -339,8 +340,7 @@ class DeliveryDeleteView(LoginRequiredMixin, View):
     def post(self, request, pk):
         shop = getattr(request.user, "shop", None)
         delivery = get_object_or_404(Delivery, pk=pk, shop=shop, deleted_at__isnull=True)
-        delivery.deleted_at = timezone.now()
-        delivery.save(update_fields=["deleted_at"])
+        soft_delete(delivery)
         messages.success(request, _("Delivery deleted."))
         return redirect("deliveries:list")
 
@@ -365,8 +365,7 @@ class DeliveryRestoreView(LoginRequiredMixin, View):
     def post(self, request, pk):
         shop = getattr(request.user, "shop", None)
         delivery = get_object_or_404(Delivery, pk=pk, shop=shop, deleted_at__isnull=False)
-        delivery.deleted_at = None
-        delivery.save(update_fields=["deleted_at"])
+        restore(delivery)
         messages.success(request, _("Delivery restored."))
         return redirect("deliveries:deleted")
 

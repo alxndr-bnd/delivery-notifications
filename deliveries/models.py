@@ -42,6 +42,11 @@ class Shop(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Когда магазин аутентифицирован по API-ключу, DRF кладёт его в `request.user`
+    # и проверяет `is_authenticated` (permission IsAuthenticated). Магазин — валидный
+    # principal API, поэтому всегда True.
+    is_authenticated = True
+
     def __str__(self):
         return self.name
 

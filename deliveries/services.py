@@ -197,6 +197,48 @@ def start_delivery(delivery: Delivery, *, manual_eta: datetime | None = None) ->
     return StartResult(ok=True, sent=result.ok, eta_at=eta_at)
 
 
+def mark_ready(delivery: Delivery) -> bool:
+    """Перевод new → created (Spremno). Идемпотентно: возвращает True, если перевёл.
+
+    Из любого другого статуса — no-op (False), статус не трогаем.
+    """
+    if delivery.status == Delivery.Status.NEW:
+        delivery.status = Delivery.Status.CREATED
+        delivery.save(update_fields=["status"])
+        return True
+    return False
+
+
+def mark_delivered(delivery: Delivery) -> bool:
+    """Ручная отметка «доставлено» (FR-26, опц.). Идемпотентно.
+
+    Возвращает True, если статус изменился на delivered, иначе False.
+    """
+    if delivery.status != Delivery.Status.DELIVERED:
+        delivery.status = Delivery.Status.DELIVERED
+        delivery.save(update_fields=["status"])
+        return True
+    return False
+
+
+def soft_delete(delivery: Delivery) -> bool:
+    """Мягкое удаление: проставляет `deleted_at`. Идемпотентно (уже удалена → False)."""
+    if delivery.deleted_at is None:
+        delivery.deleted_at = timezone.now()
+        delivery.save(update_fields=["deleted_at"])
+        return True
+    return False
+
+
+def restore(delivery: Delivery) -> bool:
+    """Восстановление мягко удалённой доставки. Идемпотентно (не удалена → False)."""
+    if delivery.deleted_at is not None:
+        delivery.deleted_at = None
+        delivery.save(update_fields=["deleted_at"])
+        return True
+    return False
+
+
 def resend_on_the_way(delivery: Delivery, new_phone: PhoneResult | None = None):
     """Переотправка уведомления «в пути» (FR-25). Явное действие, без дублей записей.
 

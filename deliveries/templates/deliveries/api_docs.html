@@ -13,12 +13,37 @@
     <p style="margin:0 0 10px">
       {% trans "Create an API key and send orders directly from your system — Javi notifies your customers about the delivery." %}
     </p>
-    <ul class="muted" style="font-size:14px;padding-left:18px;margin:0">
+    <ul class="muted" style="font-size:14px;padding-left:18px;margin:0 0 12px">
       <li>{% trans "Generate an API key in your profile" %}</li>
       <li>{% trans "Create an order (customer address + phone)" %}</li>
       <li>{% trans "Mark “delivery started” → customer gets a notification and a tracking link" %}</li>
       <li>{% trans "Delivery status and rating" %}</li>
     </ul>
+    <a href="/api/docs/" class="btn" style="width:auto;padding:8px 14px">{% trans "Open full API documentation (Swagger UI)" %}</a>
+    <a href="/api/redoc/" class="btn btn-ghost" style="width:auto;padding:8px 14px;margin-left:8px">{% trans "ReDoc" %}</a>
+    <a href="/api/schema/" class="btn btn-ghost" style="width:auto;padding:8px 14px;margin-left:8px">{% trans "OpenAPI schema" %}</a>
+  </div>
+
+  <div class="h">{% trans "Quick start (curl)" %}</div>
+  <div class="card">
+    <p class="muted" style="font-size:13px;margin:0 0 10px">
+      {% trans "Authenticate with your key, create a delivery, then start it. Replace javi_live_… with your key." %}
+    </p>
+    <pre style="overflow:auto;background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;font-size:12.5px;line-height:1.5"><code># 1) {% trans "Create a delivery" %}
+curl -X POST https://javi.serbito.rs/api/v1/deliveries \
+  -H "Authorization: Bearer javi_live_…" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: order-1042" \
+  -d '{"recipient_name":"Ana","recipient_phone":"064 123 4567","address":"Knez Mihailova 6, Beograd"}'
+# → 201 {"id":1,"status":"pending","status_internal":"new", ...}
+
+# 2) {% trans "Start the delivery (notifies the customer)" %}
+curl -X POST https://javi.serbito.rs/api/v1/deliveries/1/start \
+  -H "Authorization: Bearer javi_live_…"
+# → 200 {"status":"out_for_delivery","eta":"16:30","tracking_url":"https://javi.serbito.rs/t/…"}</code></pre>
+    <p class="muted" style="font-size:13px;margin:10px 0 0">
+      {% trans "Statuses are industry-standard: pending, ready_for_pickup, out_for_delivery, delivered. The internal Javi code is also returned as status_internal." %}
+    </p>
   </div>
 </div>
 {% endblock %}

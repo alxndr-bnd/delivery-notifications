@@ -26,6 +26,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Сторонние библиотеки
+    "rest_framework",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",  # офлайн-ассеты Swagger UI / Redoc
     # Доменные приложения Javi
     "accounts",
     "deliveries",
@@ -162,3 +166,39 @@ ETA_BUFFER_MINUTES = env.int("ETA_BUFFER_MINUTES", default=10)
 # Публичная страница статуса: срок жизни ссылки и rate limit (FR-20/NFR-6).
 TRACKING_TOKEN_TTL_DAYS = env.int("TRACKING_TOKEN_TTL_DAYS", default=7)
 TRACKING_RATE_LIMIT = env.int("TRACKING_RATE_LIMIT", default=60)  # запросов/мин на IP
+
+# --- Публичный API (Django REST Framework + drf-spectacular) ---------------
+# Аутентификация по API-ключу магазина (см. deliveries.auth.ApiKeyAuthentication).
+# Единый формат ошибок {"error": {"code", "message"}} — через deliveries.api.exception_handler.
+API_THROTTLE_RATE = env("API_THROTTLE_RATE", default="120/min")  # лимит на ключ
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": ["deliveries.auth.ApiKeyAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_THROTTLE_CLASSES": ["deliveries.auth.ApiKeyRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {"api_key": API_THROTTLE_RATE},
+    "EXCEPTION_HANDLER": "deliveries.api.exception_handler",
+    "UNAUTHENTICATED_USER": None,
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Javi API",
+    "VERSION": "1.0.0",
+    "DESCRIPTION": (
+        "Public REST API for shops to drive the delivery flow "
+        "(create → ready → start → delivered) and notify customers.\n\n"
+        "**Authentication:** pass your key as `Authorization: Bearer javi_live_…` "
+        "or `X-Api-Key: javi_live_…`. Everything is scoped to the key's shop.\n\n"
+        "**Statuses** are industry-standard (AfterShip-style): `pending`, "
+        "`ready_for_pickup`, `out_for_delivery`, `delivered`. The internal Javi "
+        "code is also returned as `status_internal`.\n\n"
+        "**Errors** use a single envelope: `{\"error\": {\"code\", \"message\"}}`."
+    ),
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    "COMPONENT_SPLIT_REQUEST": True,
+}
