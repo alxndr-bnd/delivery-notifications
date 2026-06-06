@@ -140,9 +140,9 @@ DELETE /api/v1/deliveries/{id}            # soft delete
 ## Прогресс (план → коммиты/релизы)
 
 - ✅ **Epic API-1 (ключи) + Epic API-2 (срез: create/start/get)** — ApiKey-модель, key-auth, `POST /api/v1/deliveries` (idempotency), `POST /{id}/start`, `GET /{id}`, генерация/отзыв ключей в профиле. 26 API-тестов. _Реализовано субагентом (worktree), интегрировано в `main`; релиз — см. `v0.26.0`._
-- ⏳ **Epic API-2 (полный паритет) + переезд на DRF/drf-spectacular** — `ready/delivered/resend/DELETE/restore`, industry-статусы, рефактор на DRF. (волна 2, субагент)
+- ✅ **Epic API-2 (полный паритет) + DRF/drf-spectacular** — все эндпоинты на DRF; `list/ready/delivered/resend/DELETE/restore`; industry-статусы (`pending/ready_for_pickup/out_for_delivery/delivered` + `status_internal`); API-действия тоже шлют вебхуки (логика в services). _Субагент → merge (резолв конфликта) → релиз `v0.29.0`._
 - ✅ **Epic API-3 (вебхуки мерчанту)** — `Shop.webhook_url/secret` (admin+профиль), события delivery.started/notification.delivered|read|failed/delivery.delivered/rating.created, HMAC `Javi-Signature`, доставка через Cloud Tasks (очередь javi-rating), failure-safe. _Субагент → интегрировано; релиз `v0.28.0`._
 - ✅ **Epic API-1 (регистрация)** — self-service sign-up на `/accounts/register/` (User+Shop, авто-логин). _Субагент → интегрировано; релиз `v0.27.0`._
-- ⏳ **Epic API-4 (доки)** — OpenAPI `/api/docs/` + `/app/api` quick-start. (после паритета/DRF)
+- ✅ **Epic API-4 (доки)** — OpenAPI `/api/schema/`, Swagger `/api/docs/`, ReDoc `/api/redoc/` (публично); `/app/api` со ссылками + curl quick-start. _Релиз `v0.29.0`._
 
 > Отмечаем по мере выполнения: статус + commit/release тег. Реализация — TDD (тесты → код → рефактор → следующий пункт), многозадачные части — субагентами параллельно.
