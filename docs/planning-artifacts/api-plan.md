@@ -85,9 +85,11 @@ DELETE /api/v1/deliveries/{id}            # soft delete
 - Оба слоя зовут **одни и те же сервисы**: `create_delivery`, `start_delivery`, `resend_on_the_way`, soft-delete. API = тонкий DRF-слой над services (как views — тонкие). Никакой дубль-логики.
 - `Delivery.source` уже различает `manual|api`.
 
-### Технологии
-- **Django REST Framework** (архитектура откладывала DRF под FR-6 — сейчас время). Сериализаторы, аутентификация по ключу, throttling (rate limit на ключ).
-- **OpenAPI** схема (drf-spectacular) → авто-документация на `/app/api` (заменит текущую заглушку).
+### Технологии (готовые библиотеки — НЕ писать с нуля; решение заказчика 2026-06-07)
+- **Django REST Framework** — сериализаторы, аутентификация по ключу, throttling (rate limit на ключ), единый формат ошибок.
+- **drf-spectacular** — авто-генерация **OpenAPI 3** схемы из кода.
+- **Документация ОБЯЗАТЕЛЬНА и публикуется:** Swagger UI / Redoc на `/api/docs/` + схема `/api/schema/` (drf-spectacular-sidecar). Каждый эндпоинт описан (поля/коды/примеры). `/app/api` ссылается на доки + quick-start (curl).
+- Первый срез (commit `см. ниже`) сделан на «голом» Django JSON для скорости; **волна 2 мигрирует на DRF + drf-spectacular** (тот же контракт, логика через services).
 
 ## Самостоятельный онбординг (self-service)
 Сейчас регистрация — только management-команда `create_shop`. Нужно:
@@ -134,3 +136,13 @@ DELETE /api/v1/deliveries/{id}            # soft delete
 - Cloud Tasks (для исходящих вебхуков и ретраев) — уже подключён.
 - Tracking URL `/t/<token>`, ETA (Routes), уведомления (Infobip Viber→SMS), оценка, opt-out — всё есть.
 - `Delivery.source = api` — задел уже в модели.
+
+## Прогресс (план → коммиты/релизы)
+
+- ✅ **Epic API-1 (ключи) + Epic API-2 (срез: create/start/get)** — ApiKey-модель, key-auth, `POST /api/v1/deliveries` (idempotency), `POST /{id}/start`, `GET /{id}`, генерация/отзыв ключей в профиле. 26 API-тестов. _Реализовано субагентом (worktree), интегрировано в `main`; релиз — см. `v0.26.0`._
+- ⏳ **Epic API-2 (полный паритет) + переезд на DRF/drf-spectacular** — `ready/delivered/resend/DELETE/restore`, industry-статусы, рефактор на DRF. (волна 2, субагент)
+- ⏳ **Epic API-3 (вебхуки мерчанту)** — webhook_url/secret, события + HMAC + ретраи (Cloud Tasks). (волна 2, субагент)
+- ⏳ **Epic API-1 (регистрация)** — self-service sign-up. (волна 2, субагент)
+- ⏳ **Epic API-4 (доки)** — OpenAPI `/api/docs/` + `/app/api` quick-start. (после паритета/DRF)
+
+> Отмечаем по мере выполнения: статус + commit/release тег. Реализация — TDD (тесты → код → рефактор → следующий пункт), многозадачные части — субагентами параллельно.
