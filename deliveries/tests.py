@@ -487,15 +487,46 @@ def test_mark_delivered_other_shop_404(client):
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK)
-def test_delete_delivery(client):
+def test_delete_is_soft_and_hidden_from_list(client):
+    """Soft delete: строка остаётся, но скрыта из основного списка, видна в «Obrisane»."""
     shop = _make_shop_with_origin("del@shop.rs", "Del Shop")
     delivery, _ = create_delivery(
         shop, recipient_name="Ana", phone=normalize_phone("064 123 4567"), dest_address="adr"
     )
     client.login(username="del@shop.rs", password="pass12345")
-    resp = client.post(f"/app/dostava/{delivery.pk}/obrisi/")
-    assert resp.status_code == 302
-    assert not Delivery.objects.filter(pk=delivery.pk).exists()
+    client.post(f"/app/dostava/{delivery.pk}/obrisi/")
+    delivery.refresh_from_db()
+    assert delivery.deleted_at is not None  # не удалена физически
+
+    # в основном списке её нет
+    assert list(client.get("/app/").context["deliveries"]) == []
+    # в разделе «Obrisane» — есть
+    assert client.get("/app/obrisane/").context["deleted"][0].pk == delivery.pk
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_restore_delivery(client):
+    shop = _make_shop_with_origin("res@shop.rs", "Res Shop")
+    delivery, _ = create_delivery(
+        shop, recipient_name="Ana", phone=normalize_phone("064 123 4567"), dest_address="adr"
+    )
+    client.login(username="res@shop.rs", password="pass12345")
+    client.post(f"/app/dostava/{delivery.pk}/obrisi/")
+    client.post(f"/app/dostava/{delivery.pk}/vrati/")
+    delivery.refresh_from_db()
+    assert delivery.deleted_at is None
+    assert delivery.pk in [d.pk for d in client.get("/app/").context["deliveries"]]
+
+
+def test_toggle_completed_saves_state(client):
+    shop = _make_shop_with_origin("tg@shop.rs", "Toggle Shop")
+    client.login(username="tg@shop.rs", password="pass12345")
+    client.post("/app/zavrseno/toggle/", {"expanded": "1"})
+    shop.refresh_from_db()
+    assert shop.completed_expanded is True
+    client.post("/app/zavrseno/toggle/", {"expanded": "0"})
+    shop.refresh_from_db()
+    assert shop.completed_expanded is False
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK)

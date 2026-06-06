@@ -34,7 +34,11 @@ class DeliveryListView(LoginRequiredMixin, TemplateView):
         shop = getattr(self.request.user, "shop", None)
         # Изоляция арендаторов: только доставки текущего магазина.
         deliveries = (
-            list(shop.deliveries.select_related("rating").prefetch_related("notifications"))
+            list(
+                shop.deliveries.filter(deleted_at__isnull=True)
+                .select_related("rating")
+                .prefetch_related("notifications")
+            )
             if shop is not None
             else []
         )
@@ -57,6 +61,7 @@ class DeliveryListView(LoginRequiredMixin, TemplateView):
         ctx["u_dostavi"] = [d for d in deliveries if d.status == Delivery.Status.ON_THE_WAY]
         ctx["spremno"] = [d for d in deliveries if d.status == Delivery.Status.CREATED]
         ctx["zavrseno"] = [d for d in deliveries if d.status == Delivery.Status.DELIVERED]
+        ctx["completed_expanded"] = bool(shop and shop.completed_expanded)
         return ctx
 
 
@@ -145,9 +150,11 @@ class RecipientLookupView(LoginRequiredMixin, View):
             e164 = normalize_phone(request.GET.get("phone", "")).e164
         except InvalidPhone:
             return JsonResponse({"found": False})
-        # Изоляция: ищем только среди доставок своего магазина.
+        # Изоляция: ищем только среди (не удалённых) доставок своего магазина.
         last = (
-            shop.deliveries.filter(recipient_phone=e164).order_by("-created_at").first()
+            shop.deliveries.filter(recipient_phone=e164, deleted_at__isnull=True)
+            .order_by("-created_at")
+            .first()
         )
         if last is None:
             return JsonResponse({"found": False})
@@ -236,11 +243,55 @@ class DeliveryMarkDeliveredView(LoginRequiredMixin, View):
 
 
 class DeliveryDeleteView(LoginRequiredMixin, View):
-    """Удаление доставки (с подтверждением на стороне UI). Скоуп по магазину."""
+    """Мягкое удаление доставки (soft delete). Скоуп по магазину."""
 
     def post(self, request, pk):
         shop = getattr(request.user, "shop", None)
-        delivery = get_object_or_404(Delivery, pk=pk, shop=shop)
-        delivery.delete()
+        delivery = get_object_or_404(Delivery, pk=pk, shop=shop, deleted_at__isnull=True)
+        delivery.deleted_at = timezone.now()
+        delivery.save(update_fields=["deleted_at"])
         messages.success(request, "Dostava je obrisana.")
         return redirect("deliveries:list")
+
+
+class DeletedDeliveriesView(LoginRequiredMixin, TemplateView):
+    """Раздел «Obrisane»: мягко удалённые доставки (с возможностью восстановить)."""
+
+    template_name = "deliveries/deleted_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        shop = getattr(self.request.user, "shop", None)
+        ctx["deleted"] = (
+            list(shop.deliveries.filter(deleted_at__isnull=False)) if shop else []
+        )
+        return ctx
+
+
+class DeliveryRestoreView(LoginRequiredMixin, View):
+    """Восстановление мягко удалённой доставки."""
+
+    def post(self, request, pk):
+        shop = getattr(request.user, "shop", None)
+        delivery = get_object_or_404(Delivery, pk=pk, shop=shop, deleted_at__isnull=False)
+        delivery.deleted_at = None
+        delivery.save(update_fields=["deleted_at"])
+        messages.success(request, "Dostava je vraćena.")
+        return redirect("deliveries:deleted")
+
+
+class ApiDocsView(LoginRequiredMixin, TemplateView):
+    """Страница про API для интеграции (полноценная — в работе, см. план API)."""
+
+    template_name = "deliveries/api_docs.html"
+
+
+class ToggleCompletedView(LoginRequiredMixin, View):
+    """Сохранить состояние секции «Завершённые» (развёрнута/свёрнута) в профиле."""
+
+    def post(self, request):
+        shop = getattr(request.user, "shop", None)
+        if shop is not None:
+            shop.completed_expanded = request.POST.get("expanded") == "1"
+            shop.save(update_fields=["completed_expanded"])
+        return JsonResponse({"ok": True})

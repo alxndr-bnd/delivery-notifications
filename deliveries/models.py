@@ -25,6 +25,9 @@ class Shop(models.Model):
     origin_lat = models.FloatField("широта", null=True, blank=True)
     origin_lng = models.FloatField("долгота", null=True, blank=True)
 
+    # UI-предпочтение: развёрнута ли секция «Завершённые» в кабинете.
+    completed_expanded = models.BooleanField("секция «завершённые» развёрнута", default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -59,6 +62,8 @@ class Delivery(models.Model):
     eta_at = models.DateTimeField("ETA (UTC)", null=True, blank=True)
     eta_source = models.CharField("источник ETA", max_length=6, blank=True)  # auto | manual
     started_at = models.DateTimeField("старт доставки", null=True, blank=True)
+    # Soft delete: удалённые скрыты из основного списка, видны в «Obrisane».
+    deleted_at = models.DateTimeField("удалена", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -36,8 +36,10 @@
       {% for d in spremno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
     {% endif %}
     {% if zavrseno %}
-      <div class="h">Završeno</div>
-      {% for d in zavrseno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
+      <details class="completed" id="completed-section" {% if completed_expanded %}open{% endif %}>
+        <summary class="h completed-summary">Završeno ({{ zavrseno|length }})</summary>
+        {% for d in zavrseno %}{% include "deliveries/_delivery_card.html" %}{% endfor %}
+      </details>
     {% endif %}
   {% else %}
     <div class="empty">
@@ -46,9 +48,33 @@
       <div class="muted" style="font-size:13px;margin-top:6px">Dodajte prvu dostavu dugmetom ispod.</div>
     </div>
   {% endif %}
+
+  <div class="footer">
+    <a href="{% url 'deliveries:deleted' %}">Obrisane porudžbine</a>
+    <span>·</span>
+    <a href="{% url 'deliveries:api_docs' %}">API za integraciju</a>
+  </div>
 </div>
 
 <div class="fab">
   <a class="btn btn-primary" href="{% url 'deliveries:create' %}">＋ Nova dostava</a>
 </div>
+
+<script>
+(function () {
+  var sec = document.getElementById("completed-section");
+  if (!sec) return;
+  function getCookie(name) {
+    var m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+    return m ? m.pop() : "";
+  }
+  sec.addEventListener("toggle", function () {
+    fetch("{% url 'deliveries:toggle_completed' %}", {
+      method: "POST",
+      headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/x-www-form-urlencoded"},
+      body: "expanded=" + (sec.open ? "1" : "0"),
+    }).catch(function () {});
+  });
+})();
+</script>
 {% endblock %}

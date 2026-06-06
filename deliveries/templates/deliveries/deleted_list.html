@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Obrisane · Javi{% endblock %}
+{% block body %}
+<div class="wrap">
+  <div class="topbar">
+    <div class="logo">javi<span>.</span></div>
+    <a href="{% url 'deliveries:list' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">← Dostave</a>
+  </div>
+
+  <div class="h">Obrisane porudžbine</div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="msg {% if message.tags %}msg-{{ message.tags }}{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if deleted %}
+    {% for d in deleted %}
+      <div class="card">
+        <div class="card-name">{{ d.recipient_name }}</div>
+        <div class="card-addr">{{ d.dest_address }}</div>
+        <form method="post" action="{% url 'deliveries:restore' d.pk %}" class="card-action">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-ghost">Vrati</button>
+        </form>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty"><div>Nema obrisanih porudžbina.</div></div>
+  {% endif %}
+</div>
+{% endblock %}

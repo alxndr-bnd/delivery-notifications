@@ -20,6 +20,13 @@ a{color:var(--brand)}
 .shop-bar{font-size:12px;color:var(--muted);margin:-6px 2px 4px}
 .shop-bar-name{font-weight:700;color:var(--ink)}
 .shop-bar-addr{margin-left:2px}
+.completed{margin-top:4px}
+.completed-summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px}
+.completed-summary::before{content:"▸";font-size:11px}
+.completed[open] .completed-summary::before{content:"▾"}
+.footer{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--muted);display:flex;gap:8px;justify-content:center;align-items:center}
+.footer a{color:var(--muted)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);padding:13px 14px;margin-bottom:10px}
 .card-name{font-size:15px;font-weight:700}
 .card-addr{font-size:13px;color:var(--muted);margin-top:2px}
