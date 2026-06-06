@@ -1,82 +1,198 @@
-"""Публичный API v1 для магазинов (тонкий слой над доменными сервисами).
+"""Публичный API v1 для магазинов на Django REST Framework (тонкий слой над сервисами).
 
-Без DRF — обычные Django JSON-вьюхи. Аутентификация по API-ключу в заголовке;
-вся логика переиспользует `deliveries.services` (как и UI). Единый конверт ошибок.
+Контракт URL и форма ответов сохранены 1:1 с прежней реализацией на «голом» Django,
+чтобы текущие интеграторы не сломались. Вся логика — в `deliveries.services` (как и UI).
+
+Единый конверт ошибок: `{"error": {"code", "message"}}` — через `exception_handler`.
+Industry-standard статусы (`pending`/`ready_for_pickup`/`out_for_delivery`/`delivered`)
+отдаются в поле `status`, внутренний код — в `status_internal`.
 """
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
-from functools import wraps
 
 from django.db import IntegrityError, transaction
-from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.translation import gettext as _
-from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    inline_serializer,
+)
+from rest_framework import serializers, status
+from rest_framework.exceptions import APIException, ParseError
+from rest_framework.generics import GenericAPIView
+from rest_framework.response import Response
+from rest_framework.views import exception_handler as drf_exception_handler
 
 from common.phone import InvalidPhone, normalize_phone
 from common.timewindow import BELGRADE, format_eta
 from notifications.models import Notification
 
-from .models import ApiIdempotencyKey, ApiKey, Delivery, hash_api_key
-from .services import _tracking_link, create_delivery, start_delivery
+from .models import ApiIdempotencyKey, Delivery
+from .services import (
+    _tracking_link,
+    create_delivery,
+    mark_delivered,
+    mark_ready,
+    resend_on_the_way,
+    restore,
+    soft_delete,
+    start_delivery,
+)
 
-# --- Конверт ошибок -------------------------------------------------------
+# --- Industry-standard статусы -------------------------------------------
+# Внутренний код → стандартное значение (ориентир: AfterShip 7-status model).
+STATUS_MAP = {
+    Delivery.Status.NEW: "pending",
+    Delivery.Status.CREATED: "ready_for_pickup",
+    Delivery.Status.ON_THE_WAY: "out_for_delivery",
+    Delivery.Status.DELIVERED: "delivered",
+}
+STANDARD_STATUSES = list(dict.fromkeys(STATUS_MAP.values()))
+# Обратное: стандартное значение → внутренний код (для фильтра ?status=).
+STATUS_MAP_REVERSE = {v: k for k, v in STATUS_MAP.items()}
 
 
-def error(code: str, message: str, status: int) -> JsonResponse:
-    """Единый JSON-конверт ошибки: {"error": {"code", "message"}}."""
-    return JsonResponse({"error": {"code": code, "message": message}}, status=status)
+def standard_status(delivery: Delivery) -> str:
+    return STATUS_MAP.get(delivery.status, delivery.status)
 
 
-# --- Аутентификация по ключу ---------------------------------------------
+# --- Единый конверт ошибок ------------------------------------------------
 
 
-def _read_key(request) -> str | None:
-    """Достаёт ключ из `Authorization: Bearer …` или `X-Api-Key`."""
-    auth = request.headers.get("Authorization", "")
-    if auth.startswith("Bearer "):
-        return auth[len("Bearer ") :].strip()
-    x_key = request.headers.get("X-Api-Key", "").strip()
-    return x_key or None
+class ApiError(APIException):
+    """Доменная ошибка API: несёт `code`, человеко-понятный `message` и HTTP-статус."""
+
+    def __init__(self, code: str, message: str, status_code: int):
+        self.error_code = code
+        self.status_code = status_code
+        super().__init__(detail=message)
 
 
-def authenticate(request):
-    """request → Shop (по валидному, не отозванному ключу) или None.
-
-    Побочный эффект: обновляет `last_used_at` найденного ключа.
-    """
-    raw = _read_key(request)
-    if not raw:
+def exception_handler(exc, context):
+    """Любую DRF-ошибку приводим к конверту `{"error": {"code", "message"}}`."""
+    response = drf_exception_handler(exc, context)
+    if response is None:
         return None
-    try:
-        api_key = ApiKey.objects.select_related("shop").get(
-            key_hash=hash_api_key(raw), revoked_at__isnull=True
-        )
-    except ApiKey.DoesNotExist:
-        return None
-    ApiKey.objects.filter(pk=api_key.pk).update(last_used_at=timezone.now())
-    return api_key.shop
+
+    if isinstance(exc, ApiError):
+        code, message = exc.error_code, str(exc.detail)
+    elif isinstance(exc, ParseError):
+        code = "invalid_json"
+        message = _("Request body must be a JSON object.")
+    else:
+        code = _default_code(response.status_code)
+        message = _flatten_message(response.data)
+    response.data = {"error": {"code": code, "message": message}}
+    return response
 
 
-def require_api_key(view_func):
-    """Декоратор: проверяет ключ, кладёт `request.shop`, иначе 401."""
-
-    @csrf_exempt
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        shop = authenticate(request)
-        if shop is None:
-            return error("unauthorized", _("Missing or invalid API key."), 401)
-        request.shop = shop
-        return view_func(request, *args, **kwargs)
-
-    return wrapper
+def _default_code(status_code: int) -> str:
+    return {
+        400: "invalid_request",
+        401: "unauthorized",
+        403: "forbidden",
+        404: "not_found",
+        405: "method_not_allowed",
+        409: "conflict",
+        422: "unprocessable_entity",
+        429: "rate_limited",
+    }.get(status_code, "error")
 
 
-# --- Сериализация ---------------------------------------------------------
+def _flatten_message(data) -> str:
+    """DRF-ошибки бывают вложенными — вытаскиваем первое читаемое сообщение."""
+    if isinstance(data, dict):
+        if "detail" in data:
+            return str(data["detail"])
+        for value in data.values():
+            return _flatten_message(value)
+    if isinstance(data, (list, tuple)) and data:
+        return _flatten_message(data[0])
+    return str(data)
+
+
+# --- Сериализаторы --------------------------------------------------------
+
+
+class RecipientSerializer(serializers.Serializer):
+    name = serializers.CharField(help_text=_("Recipient full name."))
+    phone = serializers.CharField(help_text=_("Recipient phone in E.164 (e.g. +381641234567)."))
+
+
+class NotificationSerializer(serializers.Serializer):
+    channel = serializers.CharField(
+        allow_blank=True, help_text=_("Delivery channel: viber or sms.")
+    )
+    status = serializers.ChoiceField(
+        choices=[s for s, _l in Notification.Status.choices],
+        help_text=_("Receipt status: queued/sent/delivered/read/failed."),
+    )
+
+
+class DeliverySerializer(serializers.Serializer):
+    """Доставка в ответах API. `status` — стандартный, `status_internal` — код Javi."""
+
+    id = serializers.IntegerField(read_only=True)
+    status = serializers.ChoiceField(
+        choices=STANDARD_STATUSES,
+        help_text=_(
+            "Industry-standard status: pending (new), ready_for_pickup (ready), "
+            "out_for_delivery (in delivery), delivered."
+        ),
+    )
+    status_internal = serializers.CharField(
+        help_text=_("Internal Javi status code: new / created / on_the_way / delivered.")
+    )
+    tracking_url = serializers.CharField(
+        allow_null=True, help_text=_("Public tracking page (set once delivery starts).")
+    )
+    recipient = RecipientSerializer()
+    description = serializers.CharField(allow_blank=True)
+    dest_address = serializers.CharField()
+    dest_city = serializers.CharField(allow_blank=True)
+    eta = serializers.CharField(
+        allow_null=True, help_text=_("Estimated arrival, local HH:MM (set on start).")
+    )
+    notification = NotificationSerializer(
+        allow_null=True, help_text=_("Latest 'on the way' notification receipt, if any.")
+    )
+    source = serializers.CharField(help_text=_("manual | api."))
+    created_at = serializers.DateTimeField()
+
+
+class DeliveryCreateSerializer(serializers.Serializer):
+    recipient_name = serializers.CharField(help_text=_("Recipient full name."))
+    recipient_phone = serializers.CharField(
+        help_text=_("Recipient phone (any common Serbian format, normalized to E.164).")
+    )
+    address = serializers.CharField(help_text=_("Delivery address (geocoded server-side)."))
+    description = serializers.CharField(
+        required=False, allow_blank=True, default="", help_text=_("Optional order description.")
+    )
+
+
+class StartSerializer(serializers.Serializer):
+    eta = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text=_("Optional manual ETA in HH:MM (used when no route is available)."),
+    )
+
+
+class ResendSerializer(serializers.Serializer):
+    recipient_phone = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text=_("Optional new recipient phone to correct and resend."),
+    )
+
+
+# --- Сериализация доставки в dict (форма ответа — стабильный контракт) ----
 
 
 def _on_the_way_notif(delivery: Delivery):
@@ -92,7 +208,8 @@ def serialize_delivery(delivery: Delivery) -> dict:
     notif = _on_the_way_notif(delivery)
     return {
         "id": delivery.id,
-        "status": delivery.status,
+        "status": standard_status(delivery),
+        "status_internal": delivery.status,
         "tracking_url": _tracking_url(delivery),
         "recipient": {"name": delivery.recipient_name, "phone": delivery.recipient_phone},
         "description": delivery.description,
@@ -105,144 +222,353 @@ def serialize_delivery(delivery: Delivery) -> dict:
     }
 
 
-def _parse_body(request) -> dict | None:
-    """JSON-тело запроса → dict (или None при битом JSON / не-объекте).
-
-    Тело парсим только если оно есть и заявлено как JSON; пустой/не-JSON
-    content-type трактуем как «без параметров» ({}), а не как ошибку.
-    """
-    content_type = (request.content_type or "").lower()
-    if not request.body or "json" not in content_type:
-        return {}
-    try:
-        data = json.loads(request.body)
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return None
-    return data if isinstance(data, dict) else None
+# --- Базовая вьюха с доступом к магазину ----------------------------------
 
 
-def _get_owned_delivery(request, pk: int) -> Delivery | None:
-    """Доставка по pk, скоуп по магазину ключа. None → 404 у вызывающего."""
-    return request.shop.deliveries.filter(pk=pk).first()
+class _ShopScopedView(GenericAPIView):
+    """Общая база: магазин ключа — `request.user`; доставки скоупятся по нему."""
+
+    @property
+    def shop(self):
+        return self.request.user
+
+    def get_owned_delivery(self, pk: int) -> Delivery:
+        """Доставка по pk в пределах магазина ключа. Иначе — 404 единым конвертом."""
+        delivery = self.shop.deliveries.filter(pk=pk).first()
+        if delivery is None:
+            raise ApiError("not_found", _("Delivery not found."), status.HTTP_404_NOT_FOUND)
+        return delivery
+
+
+_DELIVERY_RESPONSES = {
+    200: DeliverySerializer,
+    404: OpenApiResponse(description=_("Delivery not found (or belongs to another shop).")),
+}
 
 
 # --- Эндпоинты ------------------------------------------------------------
 
 
-@require_api_key
-def deliveries_collection(request):
-    if request.method != "POST":
-        return error("method_not_allowed", _("Method not allowed."), 405)
+class DeliveriesCollectionView(_ShopScopedView):
+    serializer_class = DeliveryCreateSerializer
 
-    data = _parse_body(request)
-    if data is None:
-        return error("invalid_json", _("Request body must be a JSON object."), 400)
-
-    recipient_name = (data.get("recipient_name") or "").strip()
-    recipient_phone = (data.get("recipient_phone") or "").strip()
-    address = (data.get("address") or "").strip()
-    description = (data.get("description") or "").strip()
-
-    missing = [
-        f
-        for f, v in (
-            ("recipient_name", recipient_name),
-            ("recipient_phone", recipient_phone),
-            ("address", address),
-        )
-        if not v
-    ]
-    if missing:
-        return error(
-            "invalid_request",
-            _("Missing required fields: %(fields)s.") % {"fields": ", ".join(missing)},
-            422,
-        )
-
-    try:
-        phone = normalize_phone(recipient_phone)
-    except InvalidPhone:
-        return error("invalid_phone", _("Invalid recipient phone number."), 400)
-
-    idem_key = request.headers.get("Idempotency-Key", "").strip()
-    if idem_key:
-        existing = (
-            ApiIdempotencyKey.objects.filter(shop=request.shop, key=idem_key)
-            .select_related("delivery")
-            .first()
-        )
-        if existing is not None:
-            return JsonResponse(serialize_delivery(existing.delivery), status=201)
-
-    delivery, _geocoded = create_delivery(
-        request.shop,
-        recipient_name=recipient_name,
-        phone=phone,
-        dest_address=address,
-        description=description,
+    @extend_schema(
+        operation_id="deliveries_list",
+        summary=_("List deliveries"),
+        parameters=[
+            OpenApiParameter(
+                name="status",
+                description=_(
+                    "Filter by industry-standard status: pending, ready_for_pickup, "
+                    "out_for_delivery, delivered."
+                ),
+                required=False,
+                enum=STANDARD_STATUSES,
+            )
+        ],
+        responses={200: DeliverySerializer(many=True)},
     )
-    if delivery.source != Delivery.Source.API:
-        delivery.source = Delivery.Source.API
-        delivery.save(update_fields=["source"])
+    def get(self, request):
+        qs = self.shop.deliveries.filter(deleted_at__isnull=True)
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            internal = STATUS_MAP_REVERSE.get(status_filter, status_filter)
+            qs = qs.filter(status=internal)
+        data = [serialize_delivery(d) for d in qs]
+        return Response(data, status=status.HTTP_200_OK)
 
-    if idem_key:
-        try:
-            with transaction.atomic():
-                ApiIdempotencyKey.objects.create(
-                    shop=request.shop, key=idem_key, delivery=delivery
+    @extend_schema(
+        operation_id="deliveries_create",
+        summary=_("Create a delivery"),
+        description=_(
+            "Creates a delivery (the address is geocoded server-side). Pass an "
+            "`Idempotency-Key` header to safely retry — the same key returns the same "
+            "delivery instead of creating a duplicate."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="Idempotency-Key",
+                location=OpenApiParameter.HEADER,
+                required=False,
+                description=_("Unique key to make creation idempotent (per shop)."),
+            )
+        ],
+        request=DeliveryCreateSerializer,
+        responses={
+            201: DeliverySerializer,
+            400: OpenApiResponse(description=_("Invalid phone or malformed JSON.")),
+            422: OpenApiResponse(description=_("Missing required fields.")),
+        },
+        examples=[
+            OpenApiExample(
+                "Create",
+                value={
+                    "recipient_name": "Ana",
+                    "recipient_phone": "064 123 4567",
+                    "address": "Knez Mihailova 6, Beograd",
+                    "description": "2 pizzas",
+                },
+                request_only=True,
+            )
+        ],
+    )
+    def post(self, request):
+        serializer = DeliveryCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            missing = [f for f in ("recipient_name", "recipient_phone", "address")
+                       if f in serializer.errors]
+            if missing:
+                raise ApiError(
+                    "invalid_request",
+                    _("Missing required fields: %(fields)s.") % {"fields": ", ".join(missing)},
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                 )
-        except IntegrityError:
-            # Гонка: другой запрос с тем же ключом успел первым — вернём его доставку.
+            raise ApiError("invalid_request", _flatten_message(serializer.errors), 400)
+
+        v = serializer.validated_data
+        recipient_name = v["recipient_name"].strip()
+        recipient_phone = v["recipient_phone"].strip()
+        address = v["address"].strip()
+        description = (v.get("description") or "").strip()
+
+        missing = [
+            f for f, val in (
+                ("recipient_name", recipient_name),
+                ("recipient_phone", recipient_phone),
+                ("address", address),
+            ) if not val
+        ]
+        if missing:
+            raise ApiError(
+                "invalid_request",
+                _("Missing required fields: %(fields)s.") % {"fields": ", ".join(missing)},
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        try:
+            phone = normalize_phone(recipient_phone)
+        except InvalidPhone:
+            raise ApiError("invalid_phone", _("Invalid recipient phone number."), 400) from None
+
+        idem_key = request.headers.get("Idempotency-Key", "").strip()
+        if idem_key:
             existing = (
-                ApiIdempotencyKey.objects.filter(shop=request.shop, key=idem_key)
+                ApiIdempotencyKey.objects.filter(shop=self.shop, key=idem_key)
                 .select_related("delivery")
                 .first()
             )
             if existing is not None:
-                delivery.delete()
-                return JsonResponse(serialize_delivery(existing.delivery), status=201)
+                return Response(serialize_delivery(existing.delivery), status=201)
 
-    return JsonResponse(serialize_delivery(delivery), status=201)
+        delivery, _geocoded = create_delivery(
+            self.shop,
+            recipient_name=recipient_name,
+            phone=phone,
+            dest_address=address,
+            description=description,
+        )
+        if delivery.source != Delivery.Source.API:
+            delivery.source = Delivery.Source.API
+            delivery.save(update_fields=["source"])
+
+        if idem_key:
+            try:
+                with transaction.atomic():
+                    ApiIdempotencyKey.objects.create(
+                        shop=self.shop, key=idem_key, delivery=delivery
+                    )
+            except IntegrityError:
+                existing = (
+                    ApiIdempotencyKey.objects.filter(shop=self.shop, key=idem_key)
+                    .select_related("delivery")
+                    .first()
+                )
+                if existing is not None:
+                    delivery.delete()
+                    return Response(serialize_delivery(existing.delivery), status=201)
+
+        return Response(serialize_delivery(delivery), status=201)
 
 
-@require_api_key
-def delivery_detail(request, pk: int):
-    if request.method != "GET":
-        return error("method_not_allowed", _("Method not allowed."), 405)
-    delivery = _get_owned_delivery(request, pk)
-    if delivery is None:
-        return error("not_found", _("Delivery not found."), 404)
-    return JsonResponse(serialize_delivery(delivery), status=200)
+class DeliveryDetailView(_ShopScopedView):
+    serializer_class = DeliverySerializer
+
+    @extend_schema(
+        operation_id="deliveries_retrieve",
+        summary=_("Get a delivery"),
+        responses=_DELIVERY_RESPONSES,
+    )
+    def get(self, request, pk: int):
+        delivery = self.get_owned_delivery(pk)
+        return Response(serialize_delivery(delivery), status=200)
+
+    @extend_schema(
+        operation_id="deliveries_delete",
+        summary=_("Delete a delivery (soft)"),
+        description=_("Soft-deletes the delivery; it can be restored via /restore."),
+        responses={200: DeliverySerializer, 404: _DELIVERY_RESPONSES[404]},
+    )
+    def delete(self, request, pk: int):
+        delivery = self.get_owned_delivery(pk)
+        soft_delete(delivery)
+        return Response(serialize_delivery(delivery), status=200)
 
 
-@require_api_key
-def delivery_start(request, pk: int):
-    if request.method != "POST":
-        return error("method_not_allowed", _("Method not allowed."), 405)
-    delivery = _get_owned_delivery(request, pk)
-    if delivery is None:
-        return error("not_found", _("Delivery not found."), 404)
+class DeliveryStartView(_ShopScopedView):
+    serializer_class = StartSerializer
 
-    data = _parse_body(request)
-    if data is None:
-        return error("invalid_json", _("Request body must be a JSON object."), 400)
+    @extend_schema(
+        operation_id="deliveries_start",
+        summary=_("Start delivery (dispatch)"),
+        description=_(
+            "Marks the delivery 'out for delivery': computes ETA, notifies the customer "
+            "with a tracking link. If no route is available, pass `eta` (HH:MM)."
+        ),
+        request=StartSerializer,
+        responses={
+            200: DeliverySerializer,
+            400: OpenApiResponse(description=_("Invalid eta format (expected HH:MM).")),
+            404: _DELIVERY_RESPONSES[404],
+            422: OpenApiResponse(description=_("Route unavailable — pass eta (HH:MM).")),
+        },
+    )
+    def post(self, request, pk: int):
+        delivery = self.get_owned_delivery(pk)
+        serializer = StartSerializer(data=request.data)
+        serializer.is_valid(raise_exception=False)
+        manual_eta = self._parse_eta((serializer.validated_data or {}).get("eta", ""))
 
-    manual_eta = None
-    eta_raw = (data.get("eta") or "").strip()
-    if eta_raw:
+        result = start_delivery(delivery, manual_eta=manual_eta)
+        if result.needs_manual_eta:
+            raise ApiError(
+                "eta_required",
+                _("Route is unavailable — pass eta (HH:MM) to start the delivery."),
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        delivery.refresh_from_db()
+        return Response(serialize_delivery(delivery), status=200)
+
+    @staticmethod
+    def _parse_eta(eta_raw: str):
+        eta_raw = (eta_raw or "").strip()
+        if not eta_raw:
+            return None
         try:
             parsed = datetime.strptime(eta_raw, "%H:%M").time()
         except ValueError:
-            return error("invalid_eta", _("eta must be in HH:MM format."), 400)
+            raise ApiError("invalid_eta", _("eta must be in HH:MM format."), 400) from None
         today = timezone.now().astimezone(BELGRADE).date()
-        manual_eta = datetime.combine(today, parsed, tzinfo=BELGRADE)
+        return datetime.combine(today, parsed, tzinfo=BELGRADE)
 
-    result = start_delivery(delivery, manual_eta=manual_eta)
-    if result.needs_manual_eta:
-        return error(
-            "eta_required",
-            _("Route is unavailable — pass eta (HH:MM) to start the delivery."),
-            422,
+
+class DeliveryDispatchView(DeliveryStartView):
+    """Алиас `/dispatch` для `/start` (паритет с UI «Dostava je počela»)."""
+
+    @extend_schema(
+        operation_id="deliveries_dispatch",
+        summary=_("Dispatch (alias of start)"),
+        description=_("Identical to POST /start; provided for naming parity with the UI."),
+        request=StartSerializer,
+        responses={200: DeliverySerializer, 404: _DELIVERY_RESPONSES[404]},
+    )
+    def post(self, request, pk: int):
+        return super().post(request, pk)
+
+
+class DeliveryReadyView(_ShopScopedView):
+    serializer_class = DeliverySerializer
+
+    @extend_schema(
+        operation_id="deliveries_ready",
+        summary=_("Mark ready for pickup"),
+        description=_("Transitions a 'pending' delivery to 'ready_for_pickup' (new → ready)."),
+        request=None,
+        responses=_DELIVERY_RESPONSES,
+    )
+    def post(self, request, pk: int):
+        delivery = self.get_owned_delivery(pk)
+        mark_ready(delivery)
+        return Response(serialize_delivery(delivery), status=200)
+
+
+class DeliveryDeliveredView(_ShopScopedView):
+    serializer_class = DeliverySerializer
+
+    @extend_schema(
+        operation_id="deliveries_delivered",
+        summary=_("Mark delivered"),
+        description=_("Marks the delivery as delivered (optional manual confirmation)."),
+        request=None,
+        responses=_DELIVERY_RESPONSES,
+    )
+    def post(self, request, pk: int):
+        delivery = self.get_owned_delivery(pk)
+        mark_delivered(delivery)
+        return Response(serialize_delivery(delivery), status=200)
+
+
+class DeliveryRestoreView(_ShopScopedView):
+    serializer_class = DeliverySerializer
+
+    @extend_schema(
+        operation_id="deliveries_restore",
+        summary=_("Restore a soft-deleted delivery"),
+        request=None,
+        responses=_DELIVERY_RESPONSES,
+    )
+    def post(self, request, pk: int):
+        delivery = self.get_owned_delivery(pk)
+        restore(delivery)
+        return Response(serialize_delivery(delivery), status=200)
+
+
+class DeliveryResendView(_ShopScopedView):
+    serializer_class = ResendSerializer
+
+    @extend_schema(
+        operation_id="deliveries_notifications_resend",
+        summary=_("Resend the 'on the way' notification"),
+        description=_(
+            "Re-sends the 'on the way' notification (optionally to a corrected phone). "
+            "Only valid after the delivery has started."
+        ),
+        request=ResendSerializer,
+        responses={
+            200: inline_serializer(
+                name="ResendResult",
+                fields={
+                    "delivery": DeliverySerializer(),
+                    "notification": NotificationSerializer(),
+                },
+            ),
+            404: _DELIVERY_RESPONSES[404],
+            409: OpenApiResponse(description=_("Delivery has not started — nothing to resend.")),
+        },
+    )
+    def post(self, request, pk: int):
+        delivery = self.get_owned_delivery(pk)
+        serializer = ResendSerializer(data=request.data)
+        serializer.is_valid(raise_exception=False)
+        raw_phone = (serializer.validated_data or {}).get("recipient_phone", "").strip()
+
+        new_phone = None
+        if raw_phone:
+            try:
+                new_phone = normalize_phone(raw_phone)
+            except InvalidPhone:
+                raise ApiError(
+                    "invalid_phone", _("Invalid recipient phone number."), 400
+                ) from None
+
+        result = resend_on_the_way(delivery, new_phone=new_phone)
+        if result is None:
+            raise ApiError(
+                "not_started",
+                _("Delivery has not started — nothing to resend."),
+                status.HTTP_409_CONFLICT,
+            )
+        delivery.refresh_from_db()
+        body = serialize_delivery(delivery)
+        return Response(
+            {"delivery": body, "notification": body["notification"]}, status=200
         )
-    delivery.refresh_from_db()
-    return JsonResponse(serialize_delivery(delivery), status=200)

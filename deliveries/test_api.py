@@ -120,7 +120,8 @@ def test_create_delivery_201_source_api(client):
     )
     assert resp.status_code == 201
     data = resp.json()
-    assert data["status"] == "new"
+    assert data["status"] == "pending"  # industry-standard
+    assert data["status_internal"] == "new"  # внутренний код Javi
     assert data["recipient"] == {"name": "Ana", "phone": "+381641234567"}
     assert data["source"] == "api"
     assert data["description"] == "2 pice"
@@ -157,9 +158,9 @@ def test_create_bad_json_400(client):
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK)
-def test_create_get_method_not_allowed(client):
+def test_create_put_method_not_allowed(client):
     shop, key = _shop_and_key()
-    resp = client.get(CREATE_URL, **_auth(key))
+    resp = client.put(CREATE_URL, **_auth(key))
     assert resp.status_code == 405
 
 
@@ -229,7 +230,8 @@ def test_start_delivery_via_api(client):
     resp = client.post(f"/api/v1/deliveries/{created['id']}/start", **_auth(key))
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "on_the_way"
+    assert data["status"] == "out_for_delivery"  # industry-standard
+    assert data["status_internal"] == "on_the_way"
     assert data["eta"] is not None
     assert data["tracking_url"] and "/t/" in data["tracking_url"]
     assert data["notification"]["status"] == "sent"
@@ -259,7 +261,7 @@ def test_start_with_manual_eta(client):
         data=json.dumps({"eta": "16:30"}), content_type="application/json", **_auth(key),
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "on_the_way"
+    assert resp.json()["status"] == "out_for_delivery"
     assert resp.json()["eta"] == "16:30"
 
 
@@ -286,7 +288,7 @@ def test_start_already_started_returns_state(client):
     client.post(f"/api/v1/deliveries/{created['id']}/start", **_auth(key))
     resp = client.post(f"/api/v1/deliveries/{created['id']}/start", **_auth(key))
     assert resp.status_code == 200
-    assert resp.json()["status"] == "on_the_way"
+    assert resp.json()["status"] == "out_for_delivery"
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK, ROUTES_PROVIDER=ROUTES_OK, MESSAGING_PROVIDER=MSG_OK)
@@ -299,6 +301,248 @@ def test_start_other_shop_404(client):
     resp = client.post(f"/api/v1/deliveries/{victim['id']}/start", **_auth(key_a))
     assert resp.status_code == 404
     assert Delivery.objects.get(id=victim["id"]).status == Delivery.Status.NEW
+
+
+# --- List -----------------------------------------------------------------
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_list_scoped_to_shop(client):
+    shop_a, key_a = _shop_and_key("a@shop.rs", "A")
+    shop_b, key_b = _shop_and_key("b@shop.rs", "B")
+    _post_create(
+        client, key_a, {"recipient_name": "A1", "recipient_phone": "064 123 4567", "address": "x"}
+    )
+    _post_create(
+        client, key_a, {"recipient_name": "A2", "recipient_phone": "064 123 4567", "address": "y"}
+    )
+    _post_create(
+        client, key_b, {"recipient_name": "B1", "recipient_phone": "064 123 4567", "address": "z"}
+    )
+    resp = client.get(CREATE_URL, **_auth(key_a))
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+    assert {d["recipient"]["name"] for d in data} == {"A1", "A2"}
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_list_excludes_soft_deleted(client):
+    shop, key = _shop_and_key()
+    created = _post_create(
+        client, key, {"recipient_name": "Ana", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    client.delete(f"/api/v1/deliveries/{created['id']}", **_auth(key))
+    resp = client.get(CREATE_URL, **_auth(key))
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_list_filter_by_standard_status(client):
+    shop, key = _shop_and_key()
+    pending = _post_create(
+        client, key, {"recipient_name": "P", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    ready = _post_create(
+        client, key, {"recipient_name": "R", "recipient_phone": "064 123 4567", "address": "y"}
+    ).json()
+    client.post(f"/api/v1/deliveries/{ready['id']}/ready", **_auth(key))
+    resp = client.get(CREATE_URL + "?status=ready_for_pickup", **_auth(key))
+    assert resp.status_code == 200
+    ids = [d["id"] for d in resp.json()]
+    assert ids == [ready["id"]]
+    assert pending["id"] not in ids
+
+
+# --- Status mapping -------------------------------------------------------
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK, ROUTES_PROVIDER=ROUTES_OK, MESSAGING_PROVIDER=MSG_OK)
+def test_status_mapping_across_lifecycle(client):
+    FakeMessagingProvider.sent = []
+    shop, key = _shop_and_key()
+    created = _post_create(
+        client, key, {"recipient_name": "Ana", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    did = created["id"]
+    assert (created["status"], created["status_internal"]) == ("pending", "new")
+
+    ready = client.post(f"/api/v1/deliveries/{did}/ready", **_auth(key)).json()
+    assert (ready["status"], ready["status_internal"]) == ("ready_for_pickup", "created")
+
+    started = client.post(f"/api/v1/deliveries/{did}/start", **_auth(key)).json()
+    assert (started["status"], started["status_internal"]) == ("out_for_delivery", "on_the_way")
+
+    delivered = client.post(f"/api/v1/deliveries/{did}/delivered", **_auth(key)).json()
+    assert (delivered["status"], delivered["status_internal"]) == ("delivered", "delivered")
+
+
+# --- ready / delivered ----------------------------------------------------
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_ready_transitions_new_to_created(client):
+    shop, key = _shop_and_key()
+    created = _post_create(
+        client, key, {"recipient_name": "Ana", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    resp = client.post(f"/api/v1/deliveries/{created['id']}/ready", **_auth(key))
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ready_for_pickup"
+    assert Delivery.objects.get(id=created["id"]).status == Delivery.Status.CREATED
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_ready_other_shop_404(client):
+    shop_a, key_a = _shop_and_key("a@shop.rs", "A")
+    shop_b, key_b = _shop_and_key("b@shop.rs", "B")
+    victim = _post_create(
+        client, key_b, {"recipient_name": "B", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    resp = client.post(f"/api/v1/deliveries/{victim['id']}/ready", **_auth(key_a))
+    assert resp.status_code == 404
+    assert Delivery.objects.get(id=victim["id"]).status == Delivery.Status.NEW
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_delivered_marks_delivered(client):
+    shop, key = _shop_and_key()
+    created = _post_create(
+        client, key, {"recipient_name": "Ana", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    resp = client.post(f"/api/v1/deliveries/{created['id']}/delivered", **_auth(key))
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "delivered"
+    assert Delivery.objects.get(id=created["id"]).status == Delivery.Status.DELIVERED
+
+
+# --- delete / restore -----------------------------------------------------
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_soft_delete_then_404_on_get(client):
+    shop, key = _shop_and_key()
+    created = _post_create(
+        client, key, {"recipient_name": "Ana", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    resp = client.delete(f"/api/v1/deliveries/{created['id']}", **_auth(key))
+    assert resp.status_code == 200
+    delivery = Delivery.objects.get(id=created["id"])
+    assert delivery.deleted_at is not None
+    # GET по-прежнему виден (скоуп по магазину, без фильтра deleted) — но в списке нет
+    assert client.get(CREATE_URL, **_auth(key)).json() == []
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_restore_undeletes(client):
+    shop, key = _shop_and_key()
+    created = _post_create(
+        client, key, {"recipient_name": "Ana", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    client.delete(f"/api/v1/deliveries/{created['id']}", **_auth(key))
+    resp = client.post(f"/api/v1/deliveries/{created['id']}/restore", **_auth(key))
+    assert resp.status_code == 200
+    assert Delivery.objects.get(id=created["id"]).deleted_at is None
+    listed = client.get(CREATE_URL, **_auth(key)).json()
+    assert [d["id"] for d in listed] == [created["id"]]
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_delete_other_shop_404(client):
+    shop_a, key_a = _shop_and_key("a@shop.rs", "A")
+    shop_b, key_b = _shop_and_key("b@shop.rs", "B")
+    victim = _post_create(
+        client, key_b, {"recipient_name": "B", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    resp = client.delete(f"/api/v1/deliveries/{victim['id']}", **_auth(key_a))
+    assert resp.status_code == 404
+    assert Delivery.objects.get(id=victim["id"]).deleted_at is None
+
+
+# --- notifications/resend -------------------------------------------------
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK, ROUTES_PROVIDER=ROUTES_OK, MESSAGING_PROVIDER=MSG_OK)
+def test_resend_after_start(client):
+    FakeMessagingProvider.sent = []
+    shop, key = _shop_and_key()
+    created = _post_create(
+        client, key, {"recipient_name": "Ana", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    client.post(f"/api/v1/deliveries/{created['id']}/start", **_auth(key))
+    assert len(FakeMessagingProvider.sent) == 1
+    resp = client.post(
+        f"/api/v1/deliveries/{created['id']}/notifications/resend", **_auth(key)
+    )
+    assert resp.status_code == 200
+    assert resp.json()["notification"]["status"] == "sent"
+    assert len(FakeMessagingProvider.sent) == 2
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK, ROUTES_PROVIDER=ROUTES_OK, MESSAGING_PROVIDER=MSG_OK)
+def test_resend_with_new_phone(client):
+    FakeMessagingProvider.sent = []
+    shop, key = _shop_and_key()
+    created = _post_create(
+        client, key, {"recipient_name": "Ana", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    client.post(f"/api/v1/deliveries/{created['id']}/start", **_auth(key))
+    resp = client.post(
+        f"/api/v1/deliveries/{created['id']}/notifications/resend",
+        data=json.dumps({"recipient_phone": "064 765 4321"}),
+        content_type="application/json", **_auth(key),
+    )
+    assert resp.status_code == 200
+    assert Delivery.objects.get(id=created["id"]).recipient_phone == "+381647654321"
+    assert FakeMessagingProvider.sent[-1][0] == "+381647654321"
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_resend_before_start_409(client):
+    shop, key = _shop_and_key()
+    created = _post_create(
+        client, key, {"recipient_name": "Ana", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    resp = client.post(
+        f"/api/v1/deliveries/{created['id']}/notifications/resend", **_auth(key)
+    )
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == "not_started"
+
+
+# --- Throttling -----------------------------------------------------------
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_rate_limit_per_key(client, monkeypatch):
+    # Жёстко задаём лимит на throttle (минуя кэш api_settings DRF при override).
+    from django.core.cache import cache
+
+    from deliveries.auth import ApiKeyRateThrottle
+
+    monkeypatch.setattr(ApiKeyRateThrottle, "get_rate", lambda self: "2/min")
+    cache.clear()
+    shop, key = _shop_and_key()
+    assert client.get(CREATE_URL, **_auth(key)).status_code == 200
+    assert client.get(CREATE_URL, **_auth(key)).status_code == 200
+    resp = client.get(CREATE_URL, **_auth(key))
+    assert resp.status_code == 429
+    assert resp.json()["error"]["code"] == "rate_limited"
+
+
+# --- OpenAPI docs ---------------------------------------------------------
+
+
+def test_schema_endpoint_public_200(client):
+    resp = client.get("/api/schema/")
+    assert resp.status_code == 200
+    assert b"Javi API" in resp.content
+
+
+def test_docs_endpoint_public_200(client):
+    resp = client.get("/api/docs/")
+    assert resp.status_code == 200
 
 
 # --- Key management UI ----------------------------------------------------
