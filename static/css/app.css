@@ -17,7 +17,7 @@ body{
   padding:5px 12px;line-height:1.3}
 .alpha-bar strong{letter-spacing:.08em}
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap}
-.logo{font-weight:800;font-size:18px}.logo span{color:var(--brand)}
+.logo{font-weight:800;font-size:18px;color:var(--ink);text-decoration:none}.logo span{color:var(--brand)}
 /* --- единый хедер кабинета (list + board) --- */
 .hdr{margin-bottom:14px}
 .hdr-row{display:flex;align-items:center;justify-content:space-between;gap:10px}

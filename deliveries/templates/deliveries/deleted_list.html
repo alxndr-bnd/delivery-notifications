@@ -4,7 +4,7 @@
 {% block body %}
 <div class="wrap">
   <div class="topbar">
-    <div class="logo">javi<span>.</span></div>
+    <a href="{% url 'deliveries:list' %}" class="logo">javi<span>.</span></a>
     <a href="{% url 'deliveries:list' %}" class="btn btn-ghost" style="width:auto;padding:6px 12px;font-size:13px">← {% trans "Deliveries" %}</a>
   </div>
 
