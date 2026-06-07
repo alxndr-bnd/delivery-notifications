@@ -176,6 +176,21 @@ INFOBIP_CHANNEL = env("INFOBIP_CHANNEL", default="viber")  # viber | sms
 INFOBIP_SMS_FALLBACK = env.bool("INFOBIP_SMS_FALLBACK", default=True)  # Viber→SMS при сбое
 INFOBIP_WEBHOOK_SECRET = env("INFOBIP_WEBHOOK_SECRET", default="")  # защита вебхука receipts
 
+# WhatsApp (Infobip) — вставляется в цепочку между Viber и SMS, когда WHATSAPP_ENABLED.
+# Off by default: business-initiated WhatsApp требует Meta business verification +
+# одобренный Utility-шаблон. Пока выключено — прод-цепочка остаётся ровно Viber→SMS.
+WHATSAPP_ENABLED = env.bool("WHATSAPP_ENABLED", default=False)
+WHATSAPP_SENDER = env("WHATSAPP_SENDER", default="")  # WhatsApp-номер отправителя
+WHATSAPP_TEMPLATE_NAME = env("WHATSAPP_TEMPLATE_NAME", default="")  # имя Utility-шаблона
+WHATSAPP_TEMPLATE_LANG = env("WHATSAPP_TEMPLATE_LANG", default="en")  # язык шаблона
+
+# Telegram — opt-in-only side channel (бот не пишет первым; см. integrations/telegram.py).
+# Выключен по умолчанию: при TELEGRAM_ENABLED цепочка ставит Telegram первым (для opted-in).
+TELEGRAM_ENABLED = env.bool("TELEGRAM_ENABLED", default=False)
+TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN", default="")
+# Секрет в заголовке X-Telegram-Bot-Api-Secret-Token (защита вебхука бота).
+TELEGRAM_WEBHOOK_SECRET = env("TELEGRAM_WEBHOOK_SECRET", default="")
+
 # Отложенные задачи (Cloud Tasks). Локально — Noop; прод — CloudTasksScheduler.
 TASK_SCHEDULER = env("TASK_SCHEDULER", default="tasks.scheduler.NoopTaskScheduler")
 TASKS_SECRET = env("TASKS_SECRET", default="")  # защита колбэков задач

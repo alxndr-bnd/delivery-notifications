@@ -38,10 +38,19 @@ def _default_chain_paths() -> list[str]:
     `INFOBIP_CHANNEL=sms` → только [Sms]; иначе [Viber] + [Sms] если SMS-fallback включён.
     """
     if getattr(settings, "INFOBIP_CHANNEL", "viber") == "sms":
-        return ["integrations.infobip.SmsProvider"]
-    chain = ["integrations.infobip.ViberProvider"]
-    if getattr(settings, "INFOBIP_SMS_FALLBACK", True):
-        chain.append("integrations.infobip.SmsProvider")
+        chain = ["integrations.infobip.SmsProvider"]
+    else:
+        chain = ["integrations.infobip.ViberProvider"]
+        # P2: WhatsApp между Viber и SMS, только когда WHATSAPP_ENABLED (иначе цепочка
+        # байт-в-байт прежняя Viber→SMS).
+        if getattr(settings, "WHATSAPP_ENABLED", False):
+            chain.append("integrations.whatsapp.WhatsAppProvider")
+        if getattr(settings, "INFOBIP_SMS_FALLBACK", True):
+            chain.append("integrations.infobip.SmsProvider")
+    # P3: Telegram — opt-in-only side channel. Само-скипается для не-opted-in номеров,
+    # поэтому безопасно ставить ПЕРВЫМ (для остальных проваливается дальше на Viber).
+    if getattr(settings, "TELEGRAM_ENABLED", False):
+        chain.insert(0, "integrations.telegram.TelegramProvider")
     return chain
 
 

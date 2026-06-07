@@ -339,6 +339,29 @@ def test_list_excludes_soft_deleted(client):
 
 
 @override_settings(MAPS_PROVIDER=FAKE_OK)
+def test_list_deleted_true_lists_soft_deleted(client):
+    """Паритет с UI «Обрисане»: ?deleted=true перечисляет удалённые (для restore)."""
+    shop, key = _shop_and_key()
+    active = _post_create(
+        client, key, {"recipient_name": "Live", "recipient_phone": "064 123 4567", "address": "x"}
+    ).json()
+    gone = _post_create(
+        client, key, {"recipient_name": "Gone", "recipient_phone": "064 123 4567", "address": "y"}
+    ).json()
+    client.delete(f"/api/v1/deliveries/{gone['id']}", **_auth(key))
+
+    # Активный листинг — только живой, с deleted=false.
+    active_list = client.get(CREATE_URL, **_auth(key)).json()
+    assert [d["id"] for d in active_list] == [active["id"]]
+    assert active_list[0]["deleted"] is False
+
+    # ?deleted=true — только удалённый, с deleted=true.
+    deleted_list = client.get(f"{CREATE_URL}?deleted=true", **_auth(key)).json()
+    assert [d["id"] for d in deleted_list] == [gone["id"]]
+    assert deleted_list[0]["deleted"] is True
+
+
+@override_settings(MAPS_PROVIDER=FAKE_OK)
 def test_list_filter_by_standard_status(client):
     shop, key = _shop_and_key()
     pending = _post_create(

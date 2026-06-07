@@ -540,3 +540,30 @@ def test_factory_honors_single_messaging_provider_override():
     result = get_messaging_provider().send_text("+381", "hi")
     assert result.ok and result.channel == "viber"
     assert len(FakeMessagingProvider.sent) == 1
+
+
+@override_settings(
+    TELEGRAM_ENABLED=True, WHATSAPP_ENABLED=True,
+    INFOBIP_CHANNEL="viber", INFOBIP_SMS_FALLBACK=True,
+)
+def test_default_chain_order_with_all_channels_enabled():
+    """Слитая логика P2+P3: при обоих флагах цепочка = telegram→viber→whatsapp→sms."""
+    from integrations.providers import _default_chain_paths
+
+    assert _default_chain_paths() == [
+        "integrations.telegram.TelegramProvider",
+        "integrations.infobip.ViberProvider",
+        "integrations.whatsapp.WhatsAppProvider",
+        "integrations.infobip.SmsProvider",
+    ]
+
+
+@override_settings(TELEGRAM_ENABLED=False, WHATSAPP_ENABLED=False)
+def test_default_chain_unchanged_when_flags_off():
+    """Оба выключены (дефолт) → прежняя цепочка Viber→SMS."""
+    from integrations.providers import _default_chain_paths
+
+    assert _default_chain_paths() == [
+        "integrations.infobip.ViberProvider",
+        "integrations.infobip.SmsProvider",
+    ]
