@@ -64,3 +64,21 @@ class FailingMessagingProvider(MessagingProvider):
 
     def send_text(self, to_e164: str, text: str) -> SendResult:
         return SendResult(ok=False)
+
+
+class FakeViberFailProvider(MessagingProvider):
+    """Одно-канальный фейк для цепочки: Viber всегда падает (канал инферится по .channel)."""
+
+    channel = "viber"
+
+    def send_text(self, to_e164: str, text: str) -> SendResult:
+        return SendResult(ok=False, channel="")
+
+
+class FakeSmsOkProvider(MessagingProvider):
+    """Одно-канальный фейк для цепочки: SMS успешно."""
+
+    channel = "sms"
+
+    def send_text(self, to_e164: str, text: str) -> SendResult:
+        return SendResult(ok=True, provider_message_id="sms-ok-1", channel="sms")

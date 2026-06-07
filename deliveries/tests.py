@@ -855,3 +855,29 @@ def test_receipt_updates_parent_via_winning_message_id(client, monkeypatch):
     )
     n.refresh_from_db()
     assert n.status == Notification.Status.DELIVERED
+
+
+# --- P0×P1 integration: real ChainedMessagingProvider → recorded attempts ---
+
+
+@override_settings(
+    ROUTES_PROVIDER=ROUTES_OK,
+    MESSAGING_PROVIDER="",  # пусто → фабрика собирает реальный ChainedMessagingProvider
+    MESSAGING_CHAIN=[
+        "integrations.testing.FakeViberFailProvider",
+        "integrations.testing.FakeSmsOkProvider",
+    ],
+)
+def test_real_chain_records_per_channel_attempts_through_services():
+    """Реальная цепочка Viber(fail)→SMS(ok) через start_delivery: attempts записаны,
+    победитель (sms) проставлен на Notification."""
+    _, delivery = _geocoded_delivery()
+    result = start_delivery(delivery)
+
+    assert result.ok and result.sent
+    n = delivery.notifications.get(kind=Notification.Kind.ON_THE_WAY)
+    assert n.status == Notification.Status.SENT
+    assert n.channel == "sms"
+    assert n.provider_message_id == "sms-ok-1"
+    attempts = [(a.attempt_no, a.channel, a.ok) for a in n.attempts.all()]
+    assert attempts == [(1, "viber", False), (2, "sms", True)]

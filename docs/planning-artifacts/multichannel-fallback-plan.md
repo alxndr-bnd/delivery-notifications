@@ -162,4 +162,23 @@ once P0/P1 land), merged sequentially — mind shared files (`providers.py`, `me
 `Notification` migrations). See [[javi-fan-out-subagents]], [[javi-tdd-workflow]].
 
 ## Progress
-- (planning complete — awaiting owner confirmation on §5 before P0)
+- **Owner confirmed (2026-06-07):** corrected design (Viber → WhatsApp → SMS; Telegram opt-in
+  only; Apple Messages dropped from proactive chain). Start P0 + P1.
+- **Foundation** (`0f9faac`): `AttemptResult`/`SendResult.attempts`; `Notification.Channel`
+  +telegram/+whatsapp, channel `max_length 16` (migr 0003); `MESSAGING_METRICS`.
+- **P0 done** (`d66e6ea`, agent A): `ChainedMessagingProvider` + single-channel
+  `ViberProvider`/`SmsProvider` (Infobip transport extracted); factory builds chain from
+  `MESSAGING_CHAIN` (default = legacy Viber→SMS, byte-equivalent); `MESSAGING_PROVIDER=""`
+  default so prod uses the chain; metering whitelist → `MESSAGING_METRICS`. No behavior change.
+- **P1 done** (`aebf3d9` + integration `6c8bdc6`, agent B): `NotificationAttempt` (one row per
+  channel tried, ordered) + idempotency `UniqueConstraint(delivery, kind, logical_message_id)`
+  (migr **0004**, regenerated after a base-mismatch number collision); `_send_and_record`
+  records attempts and sets the winning channel on `Notification`; receipts still match by the
+  winning `provider_message_id`. API `notif.channel` now reflects the winner.
+- **P0×P1 integration test** added: real chain Viber(fail)→SMS(ok) through `start_delivery`
+  records attempts `[(1,viber,False),(2,sms,True)]`, winner sms. Full suite 201 green, ruff clean.
+- Fanned out via 2 parallel worktree subagents (disjoint files); merged sequentially. Gotcha
+  logged: worktree branches fork from `main`, not the current feature branch — agents must
+  rebase onto the foundation, and migration numbers can collide (renumber on merge).
+- **Next:** P2 (WhatsApp provider, behind flag) and P3 (Telegram opt-in) — independent, can
+  fan out in parallel once this lands. P4 (async DLR escalation) later. Not yet deployed.
