@@ -127,7 +127,7 @@ class RecipientSerializer(serializers.Serializer):
 
 class NotificationSerializer(serializers.Serializer):
     channel = serializers.CharField(
-        allow_blank=True, help_text=_("Delivery channel: viber or sms.")
+        allow_blank=True, help_text=_("Delivery channel: telegram, viber, whatsapp or sms.")
     )
     status = serializers.ChoiceField(
         choices=[s for s, _l in Notification.Status.choices],
@@ -166,6 +166,7 @@ class DeliverySerializer(serializers.Serializer):
         allow_null=True, help_text=_("Latest 'on the way' notification receipt, if any.")
     )
     source = serializers.CharField(help_text=_("manual | api."))
+    deleted = serializers.BooleanField(help_text=_("True if soft-deleted (restorable)."))
     created_at = serializers.DateTimeField()
 
 
@@ -222,6 +223,7 @@ def serialize_delivery(delivery: Delivery) -> dict:
         "eta": format_eta(delivery.eta_at) if delivery.eta_at else None,
         "notification": {"channel": notif.channel, "status": notif.status} if notif else None,
         "source": delivery.source,
+        "deleted": delivery.deleted_at is not None,
         "created_at": delivery.created_at.isoformat(),
     }
 
@@ -278,11 +280,22 @@ class DeliveriesCollectionView(_ShopScopedView):
                 required=False,
                 enum=["created_at", "-created_at"],
             ),
+            OpenApiParameter(
+                name="deleted",
+                description=_(
+                    "Set `true` to list soft-deleted deliveries (restore them via "
+                    "/restore). Default lists only active ones."
+                ),
+                required=False,
+                enum=["true", "false"],
+            ),
         ],
         responses={200: DeliverySerializer(many=True)},
     )
     def get(self, request):
-        qs = self.shop.deliveries.filter(deleted_at__isnull=True)
+        # Паритет с UI «Обрисане»: ?deleted=true перечисляет мягко удалённые.
+        want_deleted = request.query_params.get("deleted") == "true"
+        qs = self.shop.deliveries.filter(deleted_at__isnull=not want_deleted)
         status_filter = request.query_params.get("status")
         if status_filter:
             internal = STATUS_MAP_REVERSE.get(status_filter, status_filter)
