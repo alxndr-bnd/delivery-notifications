@@ -82,3 +82,12 @@ class FakeSmsOkProvider(MessagingProvider):
 
     def send_text(self, to_e164: str, text: str) -> SendResult:
         return SendResult(ok=True, provider_message_id="sms-ok-1", channel="sms")
+
+
+class FakeViberOkProvider(MessagingProvider):
+    """Одно-канальный фейк для цепочки: Viber успешно (принят, но не обязательно доставлен)."""
+
+    channel = "viber"
+
+    def send_text(self, to_e164: str, text: str) -> SendResult:
+        return SendResult(ok=True, provider_message_id="viber-ok-1", channel="viber")

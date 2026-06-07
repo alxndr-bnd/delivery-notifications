@@ -198,4 +198,16 @@ once P0/P1 land), merged sequentially — mind shared files (`providers.py`, `me
 - **External onboarding needed before turning channels on** (code is dark/flagged): WhatsApp =
   Meta business verification + approved Utility template + `WHATSAPP_SENDER`; Telegram = create
   bot, set webhook with secret, users opt in via shared-contact button.
-- **Next:** P4 (async DLR-driven escalation) — optional, later.
+- **P4 done** (dark by default): async DLR-driven escalation. After `start_delivery` accepts a
+  send on channel N, schedules a Cloud Task (reuses the `javi-rating` queue) at
+  `now + FALLBACK_ESCALATION_DELAY_MINUTES`. The `/tasks/escalate/<id>/` callback (secret-
+  guarded) runs `escalate_delivery`: if the on_the_way notification is DELIVERED/READ → no-op;
+  else it sends via the next **untried** chain channel (`get_messaging_provider_for(untried)`),
+  appends `NotificationAttempt` rows (continuing attempt_no), updates the winning channel/id on
+  the Notification, and re-schedules if channels remain. Gated by `FALLBACK_ESCALATION_ENABLED`
+  (default False) + `FALLBACK_ESCALATION_DELAY_MINUTES` (default 10). No model/migration change.
+  Note: escalation fires on *non-delivery within the timeout* (send-accepted ≠ delivered); the
+  webhook FAILED path is covered by the same timeout check (not wired as a separate immediate
+  trigger — possible future refinement). **Full suite 234 green, ruff clean.**
+- **All phases P0–P4 complete.** Live in prod: P0/P1 (v0.40.0), P2/P3 + API parity (v0.41.0),
+  all behind flags. WhatsApp/Telegram/escalation stay dark until flags + external onboarding.

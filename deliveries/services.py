@@ -13,7 +13,13 @@ from django.utils.translation import gettext
 
 from common.phone import PhoneResult
 from common.timewindow import format_eta, rating_send_time
-from integrations.providers import get_maps_provider, get_messaging_provider, get_routes_provider
+from integrations.providers import (
+    chain_channel_paths,
+    get_maps_provider,
+    get_messaging_provider,
+    get_messaging_provider_for,
+    get_routes_provider,
+)
 from notifications.models import Notification, NotificationAttempt
 from notifications.services import is_opted_out
 from tasks.scheduler import get_task_scheduler
@@ -237,6 +243,90 @@ def _send_and_record(notification: Notification, delivery: Delivery, text: str):
     return result
 
 
+# --- P4: async-эскалация по delivery-receipt -------------------------------
+
+
+def _on_the_way_notification(delivery: Delivery) -> Notification | None:
+    return delivery.notifications.filter(kind=Notification.Kind.ON_THE_WAY).first()
+
+
+def _untried_chain_paths(notification: Notification) -> list[str]:
+    """Пути провайдеров цепочки, чьи каналы ещё НЕ пробовали для этого сообщения."""
+    tried = {a.channel for a in notification.attempts.all()}
+    return [path for ch, path in chain_channel_paths() if ch not in tried]
+
+
+def _schedule_escalation_if_pending(delivery: Delivery, notification: Notification) -> None:
+    from django.conf import settings
+
+    if not getattr(settings, "FALLBACK_ESCALATION_ENABLED", False):
+        return
+    if not _untried_chain_paths(notification):
+        return  # неиспробованных каналов нет — эскалировать некуда
+    run_at = timezone.now() + timedelta(
+        minutes=getattr(settings, "FALLBACK_ESCALATION_DELAY_MINUTES", 10)
+    )
+    try:
+        get_task_scheduler().schedule_escalation(delivery.id, run_at)
+    except Exception:
+        logger.exception("failed to schedule escalation for delivery %s", delivery.id)
+
+
+def _append_attempts(notification: Notification, result) -> None:
+    """Дописывает попытки эскалации к существующим (НЕ затирает — продолжение того же
+    логического сообщения), продолжая нумерацию attempt_no."""
+    attempts = getattr(result, "attempts", ()) or ()
+    if not attempts:
+        attempts = (_AttemptView(result.channel, result.ok, result.provider_message_id),)
+    start_no = max((a.attempt_no for a in notification.attempts.all()), default=0)
+    NotificationAttempt.objects.bulk_create(
+        [
+            NotificationAttempt(
+                notification=notification,
+                channel=a.channel or "",
+                ok=bool(a.ok),
+                provider_message_id=a.provider_message_id or "",
+                attempt_no=start_no + i + 1,
+            )
+            for i, a in enumerate(attempts)
+        ]
+    )
+
+
+def escalate_delivery(delivery: Delivery) -> bool:
+    """Если on_the_way НЕ подтверждён доставкой — отправить следующим неиспробованным каналом
+    цепочки. No-op при выключенном флаге, уже доставленном сообщении или исчерпанных каналах.
+    Возвращает True, если эскалация ушла (принята провайдером)."""
+    from django.conf import settings
+
+    if not getattr(settings, "FALLBACK_ESCALATION_ENABLED", False):
+        return False
+    notification = _on_the_way_notification(delivery)
+    if notification is None:
+        return False
+    if notification.status in (Notification.Status.DELIVERED, Notification.Status.READ):
+        return False  # доставлено/прочитано — эскалация не нужна
+    paths = _untried_chain_paths(notification)
+    token = getattr(delivery, "tracking_token", None)
+    if not paths or token is None:
+        return False  # каналы исчерпаны или нет токена трекинга
+
+    text = _on_the_way_text(delivery, token.token)
+    result = get_messaging_provider_for(paths).send_text(delivery.recipient_phone, text)
+    _append_attempts(notification, result)
+
+    if result.ok:
+        # Победитель эскалации становится «текущим» каналом/id (для будущих receipts).
+        notification.channel = result.channel
+        notification.provider_message_id = result.provider_message_id or ""
+        notification.status = Notification.Status.SENT
+        notification.sent_at = timezone.now()
+        notification.save(update_fields=["channel", "provider_message_id", "status", "sent_at"])
+        # Остались ещё неиспробованные каналы → планируем следующую проверку.
+        _schedule_escalation_if_pending(delivery, notification)
+    return result.ok
+
+
 def start_delivery(delivery: Delivery, *, manual_eta: datetime | None = None) -> StartResult:
     """«Доставка началась»: рассчитать ETA, уведомить получателя. Идемпотентно.
 
@@ -285,6 +375,10 @@ def start_delivery(delivery: Delivery, *, manual_eta: datetime | None = None) ->
         get_task_scheduler().schedule_rating_request(delivery.id, rating_send_time(eta_at))
     except Exception:
         logger.exception("failed to schedule rating request for delivery %s", delivery.id)
+
+    # P4: если включена эскалатция и остались неиспробованные каналы — запланировать проверку
+    # доставки. Сбой планировщика не ломает старт (сообщение уже ушло).
+    _schedule_escalation_if_pending(delivery, notification)
 
     # Исходящий вебхук мерчанту (декуплено, безопасно — notify_merchant сам глушит сбои).
     emit_delivery_event(delivery, "delivery.started")

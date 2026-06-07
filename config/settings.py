@@ -199,6 +199,12 @@ CLOUD_TASKS_LOCATION = env("CLOUD_TASKS_LOCATION", default="europe-west1")
 CLOUD_TASKS_QUEUE = env("CLOUD_TASKS_QUEUE", default="javi-rating")
 CLOUD_TASKS_SERVICE_URL = env("CLOUD_TASKS_SERVICE_URL", default="https://javi.serbito.rs")
 
+# P4: async-эскалация по delivery-receipt. «Принято провайдером» ≠ «доставлено» — если
+# on_the_way не подтверждён доставкой за FALLBACK_ESCALATION_DELAY_MINUTES, Cloud Task шлёт
+# следующим неиспробованным каналом цепочки. Off by default (как и WhatsApp/Telegram).
+FALLBACK_ESCALATION_ENABLED = env.bool("FALLBACK_ESCALATION_ENABLED", default=False)
+FALLBACK_ESCALATION_DELAY_MINUTES = env.int("FALLBACK_ESCALATION_DELAY_MINUTES", default=10)
+
 # Публичный базовый URL для ссылок в сообщениях (трекинг).
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default="https://javi.serbito.rs")
 
