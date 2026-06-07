@@ -27,6 +27,11 @@ class TaskScheduler(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def schedule_escalation(self, delivery_id: int, run_at: datetime) -> None:
+        """P4: запланировать проверку доставки на run_at (если не доставлено — следующий канал)."""
+        raise NotImplementedError
+
 
 class NoopTaskScheduler(TaskScheduler):
     """Локальный/дефолтный планировщик: ничего не ставит, только логирует."""
@@ -37,11 +42,15 @@ class NoopTaskScheduler(TaskScheduler):
     def schedule_webhook(self, url: str, body: bytes, headers: dict[str, str]) -> None:
         logger.info("Noop schedule webhook to %s (%d bytes)", url, len(body))
 
+    def schedule_escalation(self, delivery_id: int, run_at: datetime) -> None:
+        logger.info("Noop schedule escalation for delivery %s at %s", delivery_id, run_at)
+
 
 class CloudTasksScheduler(TaskScheduler):
     """Cloud Tasks: HTTP-задача POST на колбэк с scheduleTime (lazy-import библиотеки)."""
 
-    def schedule_rating_request(self, delivery_id: int, run_at: datetime) -> None:
+    def _schedule_post(self, path: str, run_at: datetime) -> None:
+        """Создать Cloud Tasks HTTP POST-задачу на наш колбэк `path` с scheduleTime."""
         from google.cloud import tasks_v2  # lazy: нужна только в проде
         from google.protobuf import timestamp_pb2
 
@@ -52,8 +61,8 @@ class CloudTasksScheduler(TaskScheduler):
             settings.CLOUD_TASKS_QUEUE,
         )
         url = (
-            f"{settings.CLOUD_TASKS_SERVICE_URL.rstrip('/')}"
-            f"/tasks/send-rating/{delivery_id}/?secret={settings.TASKS_SECRET}"
+            f"{settings.CLOUD_TASKS_SERVICE_URL.rstrip('/')}{path}"
+            f"?secret={settings.TASKS_SECRET}"
         )
         ts = timestamp_pb2.Timestamp()
         ts.FromDatetime(run_at)
@@ -61,15 +70,19 @@ class CloudTasksScheduler(TaskScheduler):
             request={
                 "parent": parent,
                 "task": {
-                    "http_request": {
-                        "http_method": tasks_v2.HttpMethod.POST,
-                        "url": url,
-                    },
+                    "http_request": {"http_method": tasks_v2.HttpMethod.POST, "url": url},
                     "schedule_time": ts,
                 },
             }
         )
+
+    def schedule_rating_request(self, delivery_id: int, run_at: datetime) -> None:
+        self._schedule_post(f"/tasks/send-rating/{delivery_id}/", run_at)
         logger.info("Scheduled rating for delivery %s at %s", delivery_id, run_at)
+
+    def schedule_escalation(self, delivery_id: int, run_at: datetime) -> None:
+        self._schedule_post(f"/tasks/escalate/{delivery_id}/", run_at)
+        logger.info("Scheduled escalation for delivery %s at %s", delivery_id, run_at)
 
     def schedule_webhook(self, url: str, body: bytes, headers: dict[str, str]) -> None:
         from google.cloud import tasks_v2  # lazy: нужна только в проде

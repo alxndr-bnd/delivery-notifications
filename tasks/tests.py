@@ -83,3 +83,79 @@ def test_send_rating_wrong_secret_forbidden(client):
     delivery = _delivery(shop)
     resp = client.post(f"/tasks/send-rating/{delivery.id}/?secret=wrong")
     assert resp.status_code == 403
+
+
+# --- P4: async DLR-driven escalation (off by default) ---
+
+from deliveries.services import escalate_delivery  # noqa: E402
+
+P4_CHAIN = [
+    "integrations.testing.FakeViberOkProvider",
+    "integrations.testing.FakeSmsOkProvider",
+]
+_P4 = dict(
+    ROUTES_PROVIDER=ROUTES_OK,
+    MESSAGING_PROVIDER="",
+    MESSAGING_CHAIN=P4_CHAIN,
+    TASK_SCHEDULER=SCHED,
+    FALLBACK_ESCALATION_ENABLED=True,
+)
+
+
+@override_settings(**_P4)
+def test_start_schedules_escalation_when_untried_channels_remain():
+    """Viber принят, SMS не пробован → планируется проверка доставки (эскалация)."""
+    RecordingTaskScheduler.escalations = []
+    delivery = _delivery(_make_shop())
+    start_delivery(delivery)
+    assert [d for d, _ in RecordingTaskScheduler.escalations] == [delivery.id]
+
+
+@override_settings(**{**_P4, "FALLBACK_ESCALATION_ENABLED": False})
+def test_start_no_escalation_when_flag_off():
+    RecordingTaskScheduler.escalations = []
+    start_delivery(_delivery(_make_shop()))
+    assert RecordingTaskScheduler.escalations == []
+
+
+@override_settings(**_P4)
+def test_escalate_sends_next_channel_when_not_delivered():
+    """on_the_way не доставлен → следующий канал (SMS): новая попытка, канал обновлён."""
+    RecordingTaskScheduler.escalations = []
+    delivery = _delivery(_make_shop())
+    start_delivery(delivery)
+    notif = delivery.notifications.get(kind=Notification.Kind.ON_THE_WAY)
+    assert notif.channel == "viber"
+
+    assert escalate_delivery(delivery) is True
+    notif.refresh_from_db()
+    assert notif.channel == "sms"
+    assert [(a.attempt_no, a.channel) for a in notif.attempts.all()] == [(1, "viber"), (2, "sms")]
+
+
+@override_settings(**_P4)
+def test_escalate_noop_when_delivered():
+    delivery = _delivery(_make_shop())
+    start_delivery(delivery)
+    notif = delivery.notifications.get(kind=Notification.Kind.ON_THE_WAY)
+    notif.status = Notification.Status.DELIVERED
+    notif.save(update_fields=["status"])
+
+    assert escalate_delivery(delivery) is False
+    assert notif.attempts.count() == 1  # никаких новых попыток
+
+
+@override_settings(**_P4)
+def test_escalate_noop_when_channels_exhausted():
+    delivery = _delivery(_make_shop())
+    start_delivery(delivery)
+    assert escalate_delivery(delivery) is True   # → SMS
+    assert escalate_delivery(delivery) is False  # каналы исчерпаны
+
+
+@override_settings(MESSAGING_PROVIDER="", MESSAGING_CHAIN=P4_CHAIN, TASKS_SECRET=SECRET,
+                   FALLBACK_ESCALATION_ENABLED=True)
+def test_escalate_callback_secret_guarded(client):
+    delivery = _delivery(_make_shop())
+    assert client.post(f"/tasks/escalate/{delivery.id}/?secret=wrong").status_code == 403
+    assert client.post(f"/tasks/escalate/{delivery.id}/?secret={SECRET}").status_code == 200

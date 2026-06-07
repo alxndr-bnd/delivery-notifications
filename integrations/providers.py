@@ -54,6 +54,25 @@ def _default_chain_paths() -> list[str]:
     return chain
 
 
+def _chain_paths() -> list[str]:
+    """Пути провайдеров настроенной цепочки (MESSAGING_CHAIN или дефолт Viber→SMS)."""
+    return getattr(settings, "MESSAGING_CHAIN", None) or _default_chain_paths()
+
+
+def chain_channel_paths() -> list[tuple[str, str]]:
+    """[(channel, dotted_path), …] для цепочки. channel — класс-атрибут провайдера,
+    читаем без инстанцирования (P4: вычислить следующий неиспробованный канал)."""
+    return [(import_string(p).channel, p) for p in _chain_paths()]
+
+
+def get_messaging_provider_for(paths: list[str]) -> MessagingProvider:
+    """Messaging-цепочка из заданного подмножества путей (P4-эскалация), с метерингом."""
+    provider = ChainedMessagingProvider([import_string(p)() for p in paths])
+    if _metering_on():
+        provider = MeteringMessagingProvider(provider)
+    return provider
+
+
 def _build_messaging_chain() -> MessagingProvider:
     """Собирает MessagingProvider из настроек.
 
