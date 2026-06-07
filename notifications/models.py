@@ -11,7 +11,9 @@ class Notification(models.Model):
         RATING_REQUEST = "rating_request", "Ocena"
 
     class Channel(models.TextChoices):
+        TELEGRAM = "telegram", "Telegram"
         VIBER = "viber", "Viber"
+        WHATSAPP = "whatsapp", "WhatsApp"
         SMS = "sms", "SMS"
 
     class Status(models.TextChoices):
@@ -25,7 +27,7 @@ class Notification(models.Model):
         "deliveries.Delivery", on_delete=models.CASCADE, related_name="notifications"
     )
     kind = models.CharField(max_length=16, choices=Kind.choices)
-    channel = models.CharField(max_length=6, choices=Channel.choices, blank=True)
+    channel = models.CharField(max_length=16, choices=Channel.choices, blank=True)
     provider_message_id = models.CharField(max_length=128, blank=True)
     logical_message_id = models.UUIDField(default=uuid.uuid4, editable=False)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.QUEUED)

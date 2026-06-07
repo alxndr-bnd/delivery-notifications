@@ -21,10 +21,15 @@ class GeocodeCache(models.Model):
 
 
 # Метрики глобального учёта расхода провайдеров (квоты free-tier).
+METRIC_TELEGRAM = "telegram"
 METRIC_VIBER = "viber"
+METRIC_WHATSAPP = "whatsapp"
 METRIC_SMS = "sms"
 METRIC_MAPS_GEOCODE = "maps_geocode"
 METRIC_MAPS_ROUTE = "maps_route"
+
+# Каналы сообщений, попадающие в учёт квот (для metering-вайтлиста).
+MESSAGING_METRICS = (METRIC_TELEGRAM, METRIC_VIBER, METRIC_WHATSAPP, METRIC_SMS)
 
 
 def usage_period(now=None) -> str:
