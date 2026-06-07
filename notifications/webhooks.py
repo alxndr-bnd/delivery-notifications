@@ -9,7 +9,9 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Notification
+from common.phone import InvalidPhone, normalize_phone
+
+from .models import Notification, TelegramContact
 from .services import opt_out
 
 logger = logging.getLogger(__name__)
@@ -118,5 +120,42 @@ def infobip_optout(request):
         phone = result.get("to") or result.get("phoneNumber") or result.get("destination")
         if phone:
             opt_out(phone if str(phone).startswith("+") else f"+{phone}")
+
+    return HttpResponse(status=200)
+
+
+@csrf_exempt
+def telegram_webhook(request):
+    """POST от Telegram (updates бота). Захватывает opt-in: когда пользователь делится
+    своим контактом (кнопка «поделиться телефоном»), сохраняем chat_id по нормализованному
+    номеру → потом TelegramProvider сможет писать ему первым в цепочке.
+
+    Защита — секрет в заголовке `X-Telegram-Bot-Api-Secret-Token` (Telegram шлёт его сам,
+    если задан при setWebhook). К нерелевантным апдейтам толерантны: игнор + 200.
+    """
+    secret = settings.TELEGRAM_WEBHOOK_SECRET
+    header = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not secret or header != secret:
+        return HttpResponseForbidden("forbidden")
+
+    try:
+        update = json.loads(request.body or b"{}")
+    except ValueError:
+        return HttpResponse(status=400)
+
+    message = update.get("message") or update.get("edited_message") or {}
+    contact = message.get("contact")
+    chat = message.get("chat") or {}
+    chat_id = chat.get("id")
+    raw_phone = contact.get("phone_number") if isinstance(contact, dict) else None
+
+    if raw_phone and chat_id is not None:
+        try:
+            normalized = normalize_phone(raw_phone).e164
+        except InvalidPhone:
+            return HttpResponse(status=200)  # неразборчивый номер — тихо игнорируем
+        TelegramContact.objects.update_or_create(
+            phone=normalized, defaults={"chat_id": str(chat_id)}
+        )
 
     return HttpResponse(status=200)

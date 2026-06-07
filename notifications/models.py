@@ -82,6 +82,20 @@ class NotificationAttempt(models.Model):
         return f"attempt {self.attempt_no} {self.channel} ({outcome})"
 
 
+class TelegramContact(models.Model):
+    """Opt-in получателя в Telegram: бот не может писать первым, поэтому Telegram —
+    канал только для тех, кто сам нажал /start (поделился контактом). Храним chat_id
+    по нормализованному номеру (E.164) — `TelegramProvider` ищет по нему получателя.
+    """
+
+    phone = models.CharField("телефон (E.164)", max_length=20, unique=True)
+    chat_id = models.CharField("Telegram chat id", max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.phone} → {self.chat_id}"
+
+
 class OptOut(models.Model):
     """Блоклист: номер, отписавшийся от не-критичных сообщений (зеркалит Infobip)."""
 
