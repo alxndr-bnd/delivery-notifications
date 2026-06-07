@@ -184,6 +184,13 @@ WHATSAPP_SENDER = env("WHATSAPP_SENDER", default="")  # WhatsApp-номер от
 WHATSAPP_TEMPLATE_NAME = env("WHATSAPP_TEMPLATE_NAME", default="")  # имя Utility-шаблона
 WHATSAPP_TEMPLATE_LANG = env("WHATSAPP_TEMPLATE_LANG", default="en")  # язык шаблона
 
+# Telegram — opt-in-only side channel (бот не пишет первым; см. integrations/telegram.py).
+# Выключен по умолчанию: при TELEGRAM_ENABLED цепочка ставит Telegram первым (для opted-in).
+TELEGRAM_ENABLED = env.bool("TELEGRAM_ENABLED", default=False)
+TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN", default="")
+# Секрет в заголовке X-Telegram-Bot-Api-Secret-Token (защита вебхука бота).
+TELEGRAM_WEBHOOK_SECRET = env("TELEGRAM_WEBHOOK_SECRET", default="")
+
 # Отложенные задачи (Cloud Tasks). Локально — Noop; прод — CloudTasksScheduler.
 TASK_SCHEDULER = env("TASK_SCHEDULER", default="tasks.scheduler.NoopTaskScheduler")
 TASKS_SECRET = env("TASKS_SECRET", default="")  # защита колбэков задач
