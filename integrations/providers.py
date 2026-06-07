@@ -40,6 +40,10 @@ def _default_chain_paths() -> list[str]:
     if getattr(settings, "INFOBIP_CHANNEL", "viber") == "sms":
         return ["integrations.infobip.SmsProvider"]
     chain = ["integrations.infobip.ViberProvider"]
+    # P2: WhatsApp вставляется МЕЖДУ Viber и SMS, только когда WHATSAPP_ENABLED.
+    # Off by default → цепочка байт-в-байт прежняя (Viber→SMS). (Telegram-префикс — отдельно.)
+    if getattr(settings, "WHATSAPP_ENABLED", False):
+        chain.append("integrations.whatsapp.WhatsAppProvider")
     if getattr(settings, "INFOBIP_SMS_FALLBACK", True):
         chain.append("integrations.infobip.SmsProvider")
     return chain
