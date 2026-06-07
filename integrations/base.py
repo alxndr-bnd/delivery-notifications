@@ -37,16 +37,29 @@ class RoutesProvider(ABC):
 
 
 @dataclass(frozen=True)
+class AttemptResult:
+    """Исход одной попытки отправки по конкретному каналу в цепочке фолбэка."""
+
+    channel: str  # telegram | viber | whatsapp | sms
+    ok: bool
+    provider_message_id: str | None = None
+
+
+@dataclass(frozen=True)
 class SendResult:
-    """Результат отправки сообщения провайдером."""
+    """Результат отправки. `channel`/`provider_message_id` — ПОБЕДИВШАЯ попытка;
+    `attempts` — все попытки по порядку (для пер-канального учёта в lifecycle).
+    Одно-канальный провайдер оставляет `attempts` пустым."""
 
     ok: bool
     provider_message_id: str | None = None
-    channel: str = ""  # фактический канал отправки (viber|sms)
+    channel: str = ""  # фактический канал победившей отправки (telegram|viber|whatsapp|sms)
+    attempts: tuple[AttemptResult, ...] = ()
 
 
 class MessagingProvider(ABC):
-    """Провайдер сообщений (Viber/SMS через Infobip)."""
+    """Провайдер сообщений. Реализация одно-канальная (Viber/SMS/...) или цепочка
+    фолбэка (ChainedMessagingProvider)."""
 
     @abstractmethod
     def send_text(self, to_e164: str, text: str) -> SendResult:
